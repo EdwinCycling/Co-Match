@@ -511,7 +511,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
         initial={{ scale: 0.95, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-background md:rounded-[3rem] w-full max-w-5xl h-full md:h-[85vh] flex flex-col shadow-2xl border border-outline overflow-hidden"
+        className="bg-background text-on-background md:rounded-[3rem] w-full max-w-5xl h-full md:h-[85vh] flex flex-col shadow-2xl border border-outline overflow-hidden"
       >
         <div className="p-6 border-b border-outline flex flex-col sm:flex-row sm:justify-between sm:items-center bg-surface-container-low gap-4 flex-shrink-0">
           <AnimatePresence>
@@ -538,7 +538,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
               <p className="text-on-surface-variant text-sm font-medium">{t('seeker.editor_subtitle')}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs font-bold bg-white p-2 rounded-2xl border border-outline">
+          <div className="flex items-center gap-4 text-xs font-bold bg-surface text-on-surface p-2 rounded-2xl border border-outline">
             <div className={`px-3 py-1.5 rounded-xl ${minimalScore === 100 ? 'bg-success/20 text-success' : 'bg-primary/10 text-primary'}`}>
               Basis: {minimalScore}%
             </div>
@@ -637,7 +637,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                    )}
                  </div>
                  <div className="flex-1 text-center sm:text-left">
-                    <h4 className="font-bold text-lg">{t('seeker.photo_title')}</h4>
+                    <h4 className="font-bold text-lg text-on-background">{t('seeker.photo_title')}</h4>
                     <p className="text-sm text-on-surface-variant font-medium">{t('seeker.photo_desc')}</p>
                     <p className="text-[10px] uppercase font-black tracking-widest text-primary mt-2 flex items-center gap-1 justify-center sm:justify-start">
                       <Sparkles size={12} /> {t('seeker.photo_optional')}
@@ -646,16 +646,16 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                </div>
 
                <div className="space-y-4">
-                 <h4 className="font-bold text-lg">{t('seeker.category_data')}</h4>
+                 <h4 className="font-bold text-lg text-on-background">{t('seeker.category_data')}</h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-primary">{t('seeker.label_nickname')} <span className="text-error">*</span></label>
-                      <input type="text" value={profile.nickname} onChange={e => setProfile({...profile, nickname: e.target.value})} className="w-full bg-surface-container-low border border-outline rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none font-bold" placeholder={t('seeker.placeholder_nickname')} />
+                      <input type="text" value={profile.nickname} onChange={e => setProfile({...profile, nickname: e.target.value})} className="w-full bg-surface-container-low border border-outline rounded-2xl px-5 py-4 text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary outline-none font-bold" placeholder={t('seeker.placeholder_nickname')} />
                     </div>
                  </div>
                </div>
                <div className="space-y-4">
-                 <h4 className="font-bold text-lg">{t('seeker.category_goal_type')}</h4>
+                 <h4 className="font-bold text-lg text-on-background">{t('seeker.category_goal_type')}</h4>
                  <div className="space-y-4">
                     <label className="text-xs font-black uppercase tracking-widest text-primary">{t('seeker.label_searching_for')} <span className="text-error">*</span></label>
                     <div className="flex flex-col gap-2">
@@ -714,7 +714,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                </div>
 
                <div className="space-y-6">
-                 <h4 className="font-bold text-lg flex items-center gap-2"><MapPin size={20}/> {t('seeker.category_location')}</h4>
+                 <h4 className="font-bold text-lg text-on-background flex items-center gap-2"><MapPin size={20}/> {t('seeker.category_location')}</h4>
                  
                  <div className="space-y-4">
                     <div className="space-y-2 relative">
@@ -731,7 +731,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                               setShowCitySuggestions(true);
                             }}
                             onFocus={() => setShowCitySuggestions(true)}
-                            className="w-full bg-white border-2 border-outline/50 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold text-lg"
+                            className="w-full bg-surface border-2 border-outline/50 rounded-2xl pl-12 pr-4 py-4 text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold text-lg"
                             placeholder={t('seeker.placeholder_city_search', 'Typ een stad, bijv. Gent of Antwerpen...')}
                           />
                           
@@ -741,7 +741,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="absolute left-0 right-0 top-full mt-2 bg-white border border-outline rounded-2xl shadow-xl z-[1001] overflow-hidden"
+                                className="absolute left-0 right-0 top-full mt-2 bg-surface border border-outline rounded-2xl shadow-xl z-[1001] overflow-hidden"
                               >
                                 {isSearchingCities && (
                                   <div className="px-6 py-4 flex items-center gap-3">
@@ -794,7 +794,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         <div className="flex gap-2">
                            <button 
                              onClick={() => setProfile((prev) => ({ ...prev, radius: Math.max(1, (prev.radius || 10) - 1) }))} 
-                             className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-outline/50 rounded-xl hover:border-primary/30 transition-all shadow-sm group"
+                             className="flex items-center gap-2 px-4 py-2 bg-surface border-2 border-outline/50 rounded-xl hover:border-primary/30 transition-all shadow-sm group"
                            >
                               <div className="w-6 h-6 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                                 <Minus size={14} />
@@ -802,7 +802,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                            </button>
                            <button 
                              onClick={() => setProfile((prev) => ({ ...prev, radius: Math.min(250, (prev.radius || 10) + 1) }))} 
-                             className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-outline/50 rounded-xl hover:border-primary/30 transition-all shadow-sm group"
+                             className="flex items-center gap-2 px-4 py-2 bg-surface border-2 border-outline/50 rounded-xl hover:border-primary/30 transition-all shadow-sm group"
                            >
                               <div className="w-6 h-6 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
                                 <PlusIcon size={14} />
@@ -835,7 +835,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         </MapContainer>
                         
                         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
-                           <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-white/50 pointer-events-auto">
+                           <div className="bg-surface/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-outline/50 pointer-events-auto">
                               <p className="text-[10px] font-black uppercase tracking-widest text-primary">{t('common.selected', 'Geselecteerd')}</p>
                               <p className="text-sm font-bold text-on-surface">{profile.city || t('common.choose_city', 'Kies een stad...')}</p>
                            </div>
@@ -944,7 +944,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
           {activeTab === 'wensen' && (
             <div className="max-w-3xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300">
                <div className="space-y-4">
-                 <h4 className="font-bold text-lg">{t('seeker.category_period')}</h4>
+                 <h4 className="font-bold text-lg text-on-background">{t('seeker.category_period')}</h4>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-primary">{t('seeker.label_available_from_short')}</label>
@@ -1025,7 +1025,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                          <option value="Kind">{t('seeker.gender_child')}</option>
                          <option value="Anders">{t('seeker.gender_other')}</option>
                        </select>
-                       <input type="number" placeholder={t('seeker.age_placeholder')} value={person.age || ''} onChange={e => { const n = [...(profile.composition || [])]; n[idx].age = parseInt(e.target.value)||0; setProfile({...profile, composition: n}); }} className="w-20 bg-white border outline-none py-2 px-3 rounded-xl font-bold" />
+                      <input type="number" placeholder={t('seeker.age_placeholder')} value={person.age || ''} onChange={e => { const n = [...(profile.composition || [])]; n[idx].age = parseInt(e.target.value)||0; setProfile({...profile, composition: n}); }} className="w-20 bg-surface text-on-surface placeholder:text-on-surface-variant border outline-none py-2 px-3 rounded-xl font-bold" />
                        <button onClick={() => { const n = [...(profile.composition || [])]; n.splice(idx, 1); setProfile({...profile, composition: n}); }} className="text-error p-2 hover:bg-error/10 rounded-full"><Trash2 size={16}/></button>
                      </div>
                    ))}

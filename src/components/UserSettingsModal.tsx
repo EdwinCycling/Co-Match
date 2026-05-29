@@ -87,7 +87,7 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
             initial={{ opacity: 0, y: 100, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.95 }}
-            className="fixed inset-x-0 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-[650px] max-h-[90vh] bg-background md:rounded-[2.5rem] rounded-t-[2.5rem] shadow-2xl z-[101] flex flex-col overflow-hidden"
+            className="fixed inset-x-0 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:w-[650px] max-h-[90vh] bg-background text-on-background md:rounded-[2.5rem] rounded-t-[2.5rem] shadow-2xl z-[101] flex flex-col overflow-hidden"
           >
             <div className="flex items-center justify-between p-6 border-b border-outline">
               <h2 className="text-2xl font-display font-black text-on-background">{t('settings.title', 'Instellingen')}</h2>
@@ -513,4 +513,3 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
     </AnimatePresence>
   );
 }
-

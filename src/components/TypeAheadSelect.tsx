@@ -13,7 +13,7 @@ export function TypeAheadSelect({
   options,
   placeholder, 
   className = "",
-  inputClassName = "w-full bg-surface-container-low border-2 border-outline/50 rounded-2xl p-4 pr-12 font-bold outline-none focus:border-primary transition-all",
+  inputClassName = "w-full bg-surface-container-low border-2 border-outline/50 rounded-2xl p-4 pr-12 font-bold text-on-surface placeholder:text-on-surface-variant outline-none focus:border-primary transition-all",
   required = false
 }: { 
   value: string; 
@@ -87,7 +87,7 @@ export function TypeAheadSelect({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-[150] top-full left-0 right-0 mt-2 bg-white border border-outline rounded-2xl shadow-xl max-h-64 overflow-y-auto no-scrollbar overflow-hidden"
+            className="absolute z-[150] top-full left-0 right-0 mt-2 bg-surface border border-outline rounded-2xl shadow-xl max-h-64 overflow-y-auto no-scrollbar overflow-hidden"
           >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((o) => (

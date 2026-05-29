@@ -299,6 +299,39 @@
     @apply bg-background text-on-background antialiased selection:bg-primary/20 overflow-y-auto;
   }
 
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--cm-on-background);
+  }
+
+  input,
+  textarea,
+  select,
+  option {
+    color: var(--cm-on-surface);
+    caret-color: var(--cm-primary);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--cm-on-surface-variant);
+    opacity: 0.9;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: var(--cm-on-surface);
+    -webkit-box-shadow: 0 0 0 1000px var(--cm-surface-container-low) inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
   /* Fix for missing pointer cursors on clickable elements (Tailwind v4 default change) */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),

@@ -162,7 +162,7 @@ export function ProviderProfileModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-background w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-background text-on-background w-full max-w-2xl rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden flex flex-col max-h-[90vh]"
       >
         <div className="p-8 border-b border-outline flex justify-between items-center bg-surface-container-lowest">
           <div>
@@ -186,7 +186,7 @@ export function ProviderProfileModal({
                     </div>
                     <TrustBadge level={userVerificationLevel || 1} size="md" />
                  </div>
-                 <button type="button" onClick={() => { onClose(); onOpenVerification?.(); }} className="w-full py-3 bg-white rounded-xl border border-outline/20 font-bold flex items-center justify-between px-4 hover:border-primary/50 text-sm">
+                 <button type="button" onClick={() => { onClose(); onOpenVerification?.(); }} className="w-full py-3 bg-surface text-on-surface rounded-xl border border-outline/20 font-bold flex items-center justify-between px-4 hover:border-primary/50 text-sm">
                     <span>Verificatie & Status Bekijken</span>
                     <ChevronRight size={16} className="text-on-surface-variant" />
                  </button>
