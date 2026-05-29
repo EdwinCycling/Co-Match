@@ -74,7 +74,7 @@ export default function UserProfilePage({ onBack }: { onBack: () => void }) {
 
       <h1 className="text-3xl font-display font-bold text-on-background mb-8">{t('profile.title')}</h1>
 
-      <div className="bg-white p-8 rounded-[2rem] border border-outline shadow-sm space-y-8">
+      <div className="bg-surface p-8 rounded-[2rem] border border-outline shadow-sm space-y-8">
         {/* Hard Profile Data */}
         <section className="space-y-6">
           <h2 className="text-xl font-bold">Hard Gegevens (Verplicht)</h2>
@@ -85,7 +85,7 @@ export default function UserProfilePage({ onBack }: { onBack: () => void }) {
             </div>
             <div className="space-y-2">
               <label className="font-bold text-sm text-on-surface">{t('profile.birth_country')} *</label>
-              <select required name="birthCountry" value={profile.birthCountry} onChange={handleChange} className="w-full p-3 rounded-xl border border-outline focus:outline-primary bg-white">
+              <select required name="birthCountry" value={profile.birthCountry} onChange={handleChange} className="w-full p-3 rounded-xl border border-outline focus:outline-primary bg-surface text-on-surface">
                 <option value="">{t('user.select_country', 'Kies land...')}</option>
                 {countries.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -96,7 +96,7 @@ export default function UserProfilePage({ onBack }: { onBack: () => void }) {
             </div>
             <div className="space-y-2">
               <label className="font-bold text-sm text-on-surface">{t('profile.gender')} *</label>
-              <select required name="gender" value={profile.gender} onChange={handleChange} className="w-full p-3 rounded-xl border border-outline focus:outline-primary bg-white">
+              <select required name="gender" value={profile.gender} onChange={handleChange} className="w-full p-3 rounded-xl border border-outline focus:outline-primary bg-surface text-on-surface">
                 <option value="">{t('user.select_gender', 'Kies geslacht...')}</option>
                 {genders.map(g => <option key={g} value={g}>{g}</option>)}
               </select>
@@ -155,12 +155,12 @@ export default function UserProfilePage({ onBack }: { onBack: () => void }) {
 
       {showExamples && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full max-h-[80vh] overflow-y-auto relative">
+          <div className="bg-background text-on-background rounded-3xl p-8 max-w-lg w-full max-h-[80vh] overflow-y-auto relative border border-outline">
             <button onClick={() => setShowExamples(false)} className="absolute top-4 right-4"><X /></button>
             <h2 className="text-2xl font-bold mb-4">Voorbeelden</h2>
-            <div className="bg-gray-100 p-4 rounded-xl text-sm italic mb-4">
+            <div className="bg-surface-container p-4 rounded-xl text-sm italic mb-4">
               "I'm 24F and an incoming master's student at UGent. I'm quiet but very friendly. I enjoy meeting new people. I'm very clean and respectful, and I enjoy sharing."
-              <button className="mt-2 block w-full bg-white border p-2 rounded text-xs font-bold">Kopieer</button>
+              <button className="mt-2 block w-full bg-surface border border-outline p-2 rounded text-xs font-bold">Kopieer</button>
             </div>
             {/* Add more examples in other languages if needed based on the request */}
           </div>
@@ -174,7 +174,7 @@ export default function UserProfilePage({ onBack }: { onBack: () => void }) {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white max-w-md w-full p-8 rounded-[2.5rem] shadow-2xl border border-outline text-center"
+              className="bg-background text-on-background max-w-md w-full p-8 rounded-[2.5rem] shadow-2xl border border-outline text-center"
             >
               <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-6 text-primary">
                 <ShieldAlert size={40} />

@@ -345,10 +345,10 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
                 animate={{ x: 0 }}
                 exit={{ x: '100%' }}
                 transition={{ type: 'spring', damping: 26, stiffness: 190 }}
-                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white/75 backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.15)] z-[100001] border-l border-white/20 flex flex-col overflow-hidden"
+                className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-background/90 text-on-background backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.15)] z-[100001] border-l border-outline/20 flex flex-col overflow-hidden"
               >
               {/* Header */}
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/60">
+              <div className="p-6 border-b border-outline/20 flex items-center justify-between bg-surface/80">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                     <Sparkles size={20} className="animate-pulse" />
@@ -401,10 +401,10 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-300 flex flex-col ${
                           isOpened 
-                            ? 'bg-neutral-50/50 border-gray-100/70 shadow-sm opacity-80' 
+                            ? 'bg-surface-container-low border-outline/20 shadow-sm opacity-80' 
                             : isDeepLinked
                               ? 'bg-gradient-to-br from-indigo-50/80 to-purple-50/80 border-purple-300 ring-2 ring-purple-600/20 shadow-xl'
-                              : 'bg-white border-outline shadow-md hover:shadow-lg hover:-translate-y-0.5'
+                              : 'bg-surface border-outline shadow-md hover:shadow-lg hover:-translate-y-0.5'
                         }`}
                       >
                         {/* Shimmer sparkle decoration for unopened items */}
@@ -414,7 +414,7 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
 
                         {/* Card Hero Image */}
                         {gift.imageUrl && (
-                          <div className="h-44 w-full relative overflow-hidden bg-surface-container border-b border-gray-100">
+                          <div className="h-44 w-full relative overflow-hidden bg-surface-container border-b border-outline/20">
                             <img 
                               src={gift.imageUrl} 
                               alt={gift.title} 
@@ -459,27 +459,27 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
 
                           {/* Title */}
                           <h3 className={`text-lg font-display font-black leading-snug tracking-tight ${
-                            isOpened ? 'text-gray-600' : 'text-on-background group-hover:text-primary transition-colors'
+                            isOpened ? 'text-on-surface-variant' : 'text-on-background group-hover:text-primary transition-colors'
                           }`}>
                             {gift.title}
                           </h3>
 
                           {/* Message Body with clean styling & supports whitespace preservation */}
                           <p className={`text-sm leading-relaxed font-medium whitespace-pre-line ${
-                            isOpened ? 'text-gray-400' : 'text-on-surface-variant'
+                            isOpened ? 'text-on-surface-variant/80' : 'text-on-surface-variant'
                           }`}>
                             {gift.message}
                           </p>
 
                           {/* Actions Panel */}
-                          <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-4">
+                          <div className="pt-4 border-t border-outline/20 flex items-center justify-between gap-4">
                             {/* Mark as read button */}
                             <button
                               onClick={() => toggleOpenedStatus(gift.id)}
                               className={`flex-1 px-4 py-2.5 rounded-xl font-black uppercase text-xs tracking-widest transition-all text-center flex items-center justify-center gap-2 ${
                                 isOpened 
-                                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-500' 
-                                  : 'bg-primary hover:bg-primary/95 text-white hover:scale-[1.02] shadow-md shadow-primary/10'
+                                  ? 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant' 
+                                  : 'bg-primary hover:bg-primary/95 text-on-primary hover:scale-[1.02] shadow-md shadow-primary/10'
                               }`}
                             >
                               {isOpened ? (
@@ -514,7 +514,7 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
               </div>
 
               {/* Bottom footer bar */}
-              <div className="absolute bottom-0 left-0 w-full p-4 border-t border-gray-100 bg-white/70 backdrop-blur-xl flex items-center justify-center text-[10px] uppercase font-black tracking-widest text-on-surface-variant">
+              <div className="absolute bottom-0 left-0 w-full p-4 border-t border-outline/20 bg-surface/80 backdrop-blur-xl flex items-center justify-center text-[10px] uppercase font-black tracking-widest text-on-surface-variant">
                 {t('gifts.footer_text', 'Met liefde gemaakt voor onze gebruikers ❤️')}
               </div>
             </motion.div>

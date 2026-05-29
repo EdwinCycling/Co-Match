@@ -492,12 +492,12 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setIsSidebarCompact(!isSidebarCompact)} 
-                  className="hidden md:flex p-2 bg-white hover:bg-surface-container rounded-full shadow-sm transition-colors border border-outline/50"
+                  className="hidden md:flex p-2 bg-surface hover:bg-surface-container rounded-full shadow-sm transition-colors border border-outline/50"
                   title={isSidebarCompact ? "Breid uit" : "Compacte weergave"}
                 >
                   {isSidebarCompact ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                 </button>
-                <button onClick={onClose} className="p-2 bg-white hover:bg-surface-container rounded-full shadow-sm transition-colors border border-outline/50"><X size={18} /></button>
+                <button onClick={onClose} className="p-2 bg-surface hover:bg-surface-container rounded-full shadow-sm transition-colors border border-outline/50"><X size={18} /></button>
               </div>
             </div>
             
@@ -507,13 +507,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               <div className="flex bg-surface-container rounded-xl p-1 gap-1">
                 <button 
                   onClick={() => setSortOrder('newest')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${sortOrder === 'newest' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:bg-white/30'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${sortOrder === 'newest' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:bg-surface/60'}`}
                 >
                   <ArrowUpDown size={10} /> {t('common.newest', 'Nieuwste')}
                 </button>
                 <button 
                   onClick={() => setSortOrder('oldest')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${sortOrder === 'oldest' ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:bg-white/30'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${sortOrder === 'oldest' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:bg-surface/60'}`}
                 >
                   <ArrowUpDown size={10} className="rotate-180" /> {t('common.oldest', 'Oudste')}
                 </button>
@@ -530,7 +530,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   <button 
                     key={item.id}
                     onClick={() => setFilterType(item.id as any)}
-                    className={`shrink-0 px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${filterType === item.id ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant hover:bg-white/30'}`}
+                    className={`shrink-0 px-3 md:px-4 py-1.5 md:py-2 text-[9px] md:text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${filterType === item.id ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:bg-surface/60'}`}
                   >
                     {item.label}
                   </button>
@@ -581,7 +581,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                           <span className="text-primary font-black text-lg">{s?.firstName?.[0] || s?.nickname?.[0] || '?'}</span>
                         )}
                         {isUnread && (
-                          <div className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm" />
+                          <div className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-surface shadow-sm" />
                         )}
                       </div>
                       <span className={`text-[10px] font-black truncate max-w-[64px] ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`}>
@@ -628,7 +628,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                         className={`w-full flex flex-col items-center justify-center p-3 rounded-2xl transition-all border relative ${
                           selectedChat?.id === chat.id 
                             ? 'bg-primary/5 border-primary shadow-md' 
-                            : 'bg-white border-outline/40 hover:border-primary/40'
+                            : 'bg-surface border-outline/40 hover:border-primary/40'
                         }`}
                         title={s?.firstName || s?.nickname}
                       >
@@ -643,7 +643,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                             <span className="text-primary font-black text-sm">{s?.firstName?.[0] || s?.nickname?.[0] || '?'}</span>
                           )}
                           {isUnread && (
-                            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary rounded-full border-2 border-white" />
+                            <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary rounded-full border-2 border-surface" />
                           )}
                         </div>
                         <span className="text-[8px] font-black uppercase tracking-tight text-on-surface-variant truncate w-full text-center">
@@ -661,8 +661,8 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                       onClick={() => setSelectedChat(chat)}
                       className={`w-full text-left p-4 md:p-5 rounded-3xl transition-all border group relative flex flex-col gap-3 ${
                         selectedChat?.id === chat.id 
-                          ? 'bg-white border-primary shadow-[0_15px_30px_-15px_rgba(0,0,0,0.1)] scale-[1.02] z-10' 
-                          : 'bg-white border-outline/40 hover:border-primary/40 hover:shadow-lg'
+                          ? 'bg-surface border-primary shadow-[0_15px_30px_-15px_rgba(0,0,0,0.1)] scale-[1.02] z-10' 
+                          : 'bg-surface border-outline/40 hover:border-primary/40 hover:shadow-lg'
                       }`}
                     >
                       <div className="flex gap-4 items-start">
@@ -680,7 +680,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                         <div className="flex-grow overflow-hidden">
                           <div className="flex justify-between items-start mb-1">
                             <h4 className="font-black text-on-surface text-base truncate">{s?.firstName || s?.nickname || 'Kandidaat'}</h4>
-                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isUnread ? 'bg-primary text-white animate-pulse' : 'text-on-surface-variant/40'}`}>
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isUnread ? 'bg-primary text-on-primary animate-pulse' : 'text-on-surface-variant/40'}`}>
                               {timeSince(updatedAt)}
                             </span>
                           </div>
@@ -722,7 +722,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
         {/* Chat Area */}
         <div className={`flex-grow bg-surface-container-lowest flex-col h-full relative overflow-hidden ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
           {selectedChat ? (
-            <>              <div className="p-3 md:p-6 bg-white border-b border-outline flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 relative overflow-hidden z-40">
+            <>              <div className="p-3 md:p-6 bg-surface border-b border-outline flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 relative overflow-hidden z-40">
                 <div className="flex items-center gap-3 min-w-0">
                   <div 
                     onClick={() => { const s = seekers[selectedChat.seekerId]; if (s) setShowProfile(s); }}
@@ -762,14 +762,14 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                     <button 
                       onClick={handleOpenReport} 
                       disabled={loadingReport} 
-                      className="flex-1 md:flex-none flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-3 md:px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 whitespace-nowrap active:scale-95 cursor-pointer"
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-3 md:px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-on-primary rounded-xl shadow-md hover:shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50 disabled:scale-100 whitespace-nowrap active:scale-95 cursor-pointer"
                     >
                       <Sparkles size={14} className="fill-current animate-pulse text-white" /> <span className="hidden xl:inline">Lees AI Match</span><span className="xl:hidden">AI Match</span>
                     </button>
                     {providerLinkedIn && (
                       <button 
                         onClick={handleToggleLinkedInShare}
-                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-3 md:px-4 py-2.5 rounded-xl transition-all shadow-sm whitespace-nowrap active:scale-95 border ${selectedChat.meta?.isLinkedInShared ? 'bg-blue-600 border-blue-700 text-white shadow-blue-500/20' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'}`}
+                      className={`flex-1 md:flex-none flex items-center justify-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-widest px-3 md:px-4 py-2.5 rounded-xl transition-all shadow-sm whitespace-nowrap active:scale-95 border ${selectedChat.meta?.isLinkedInShared ? 'bg-blue-600 border-blue-700 text-on-primary shadow-blue-500/20' : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'}`}
                       >
                         <Linkedin size={14} /> <span className="hidden xl:inline">{selectedChat.meta?.isLinkedInShared ? t('chat.shared', 'Gedeeld') : t('chat.share_linkedin', 'LinkedIn delen')}</span>
                       </button>
@@ -786,7 +786,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   <div className="hidden md:block h-8 w-px bg-outline/20 mx-1" />
                   <button 
                     onClick={() => setSelectedChat(null)} 
-                    className="md:hidden p-2.5 bg-white hover:bg-surface-container rounded-xl shadow-sm transition-all border border-outline/50 shrink-0 text-on-surface-variant hover:text-on-surface active:scale-90"
+                    className="md:hidden p-2.5 bg-surface hover:bg-surface-container rounded-xl shadow-sm transition-all border border-outline/50 shrink-0 text-on-surface-variant hover:text-on-surface active:scale-90"
                     title={t('common.back', 'Terug naar lijst')}
                   >
                     <ArrowLeft size={20} />
@@ -887,7 +887,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                  )}
                  <div ref={messagesEndRef} />
               </div>
-              <div className="p-4 md:p-6 bg-white border-t border-outline relative">
+              <div className="p-4 md:p-6 bg-surface border-t border-outline relative">
                 <div className="flex justify-between items-center mb-3 px-1">
                    <div className="flex items-center gap-2">
                      <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
@@ -978,7 +978,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                <motion.div 
                  initial={{ scale: 0.9, y: 30 }}
                  animate={{ scale: 1, y: 0 }}
-                 className="bg-white w-full max-w-4xl h-[80vh] rounded-[3rem] flex flex-col shadow-2xl border border-outline overflow-hidden"
+                 className="bg-background text-on-background w-full max-w-4xl h-[80vh] rounded-[3rem] flex flex-col shadow-2xl border border-outline overflow-hidden"
                >
                  <div className="p-6 border-b border-outline flex justify-between items-center bg-surface-container-low">
                    <div className="flex items-center gap-3">
@@ -987,7 +987,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                      </div>
                      <h2 className="text-xl font-display font-black text-on-background uppercase tracking-wider">{t('chat.compose', 'Bericht opstellen')}</h2>
                    </div>
-                   <button onClick={() => setShowExpandedInput(false)} className="p-3 bg-white hover:bg-surface-container rounded-full shadow-sm transition-all active:scale-90"><X size={24} /></button>
+                   <button onClick={() => setShowExpandedInput(false)} className="p-3 bg-surface hover:bg-surface-container rounded-full shadow-sm transition-all active:scale-90"><X size={24} /></button>
                  </div>
                  <div className="flex-grow p-8">
                    <textarea 
@@ -1070,9 +1070,9 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   <div className="bg-primary/5 p-6 rounded-[2rem] border border-primary/10 flex items-center gap-5">
                     <div className="shrink-0">
                       {(showProfile.photo_url || showProfile.photoURL) ? (
-                        <img src={showProfile.photo_url || showProfile.photoURL} alt="Profielomslag" className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" referrerPolicy="no-referrer" />
+                        <img src={showProfile.photo_url || showProfile.photoURL} alt="Profielomslag" className="w-20 h-20 rounded-full object-cover border-4 border-surface shadow-md" referrerPolicy="no-referrer" />
                       ) : (
-                        <div className="w-20 h-20 rounded-full bg-primary/20 border-4 border-white flex items-center justify-center text-3xl font-display font-black text-primary shadow-md">
+                        <div className="w-20 h-20 rounded-full bg-primary/20 border-4 border-surface flex items-center justify-center text-3xl font-display font-black text-primary shadow-md">
                           {showProfile.firstName?.[0] || showProfile.nickname?.[0] || 'K'}
                         </div>
                       )}
@@ -1089,27 +1089,27 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   {/* Profile Summary Elements */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
                     {showProfile.budget_max > 0 && (
-                      <div className="p-4 bg-white rounded-2xl border border-outline/50 shadow-xs">
+                      <div className="p-4 bg-surface rounded-2xl border border-outline/50 shadow-xs">
                         <span className="block opacity-60 text-[10px] font-bold uppercase tracking-wider mb-1">{t('popup.budget', 'Budget')}</span>
                         <span className="font-bold text-sm text-on-background">
                           {currencyConverter.formatEur(showProfile.budget_min || 0)} - {currencyConverter.formatEur(showProfile.budget_max)} {t('popup.per_month', 'p/m')}
                         </span>
                       </div>
                     )}
-                    <div className="p-4 bg-white rounded-2xl border border-outline/50 shadow-xs">
+                    <div className="p-4 bg-surface rounded-2xl border border-outline/50 shadow-xs">
                       <span className="block opacity-60 text-[10px] font-bold uppercase tracking-wider mb-1">{t('popup.rent_period', 'Huurperiode')}</span>
                       <span className="font-bold text-sm text-on-background">
                         {showProfile.is_indefinite ? t('popup.indefinite', 'Onbepaalde tijd') : showProfile.stay_duration_months ? `${showProfile.stay_duration_months} ${t('popup.months', 'maanden')}` : t('popup.not_selected', 'Niet geselecteerd')}
                       </span>
                     </div>
-                    <div className="p-4 bg-white rounded-2xl border border-outline/50 shadow-xs">
+                    <div className="p-4 bg-surface rounded-2xl border border-outline/50 shadow-xs">
                       <span className="block opacity-60 text-[10px] font-bold uppercase tracking-wider mb-1">{t('popup.occupancy', 'Bewoning')}</span>
                       <span className="font-bold text-sm text-on-background">
                         {showProfile.single_occupancy ? t('popup.single', 'Alleen') : `${t('popup.roommates', 'Met huisgenoten')} (${showProfile.min_roommates || 1} - ${showProfile.max_roommates || 2})`}
                       </span>
                     </div>
                     {showProfile.available_from && (
-                      <div className="p-4 bg-white rounded-2xl border border-outline/50 shadow-xs">
+                      <div className="p-4 bg-surface rounded-2xl border border-outline/50 shadow-xs">
                         <span className="block opacity-60 text-[10px] font-bold uppercase tracking-wider mb-1">{t('popup.available_from', 'Beschikbaar per')}</span>
                         <span className="font-bold text-sm text-on-background">
                           {formatDate(new Date(showProfile.available_from), dateFormat)}
@@ -1120,7 +1120,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
 
                   {/* Introductie met whitespace-pre-wrap */}
                   {showProfile.introduction && (
-                    <div className="p-6 bg-white rounded-[2rem] border border-outline/50 shadow-xs">
+                    <div className="p-6 bg-surface rounded-[2rem] border border-outline/50 shadow-xs">
                       <h4 className="text-sm font-bold text-on-surface uppercase tracking-widest mb-3 flex items-center gap-2">
                         <User size={16} className="text-primary" /> {t('popup.about_me', 'Over mij / Voorstellen')}
                       </h4>
@@ -1131,7 +1131,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   {/* Goals & Property types */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {showProfile.goal && showProfile.goal.length > 0 && (
-                      <div className="p-5 bg-white rounded-[2rem] border border-outline/50 shadow-xs">
+                      <div className="p-5 bg-surface rounded-[2rem] border border-outline/50 shadow-xs">
                         <h4 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3">{t('popup.search_goal', 'Zoekdoel')}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {showProfile.goal.map((g: string) => (
@@ -1144,7 +1144,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                     )}
 
                     {showProfile.property_type && showProfile.property_type.length > 0 && (
-                      <div className="p-5 bg-white rounded-[2rem] border border-outline/50 shadow-xs">
+                      <div className="p-5 bg-surface rounded-[2rem] border border-outline/50 shadow-xs">
                         <h4 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3">{t('popup.property_types', 'Geïnteresseerde woningtypes')}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {showProfile.property_type.map((type: string) => (
@@ -1159,7 +1159,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
 
                   {/* Samenstelling - Corrected Gender matching! */}
                   {showProfile.composition && showProfile.composition.length > 0 && (
-                    <div className="p-6 bg-white rounded-[2rem] border border-outline/50 shadow-xs">
+                    <div className="p-6 bg-surface rounded-[2rem] border border-outline/50 shadow-xs">
                       <h4 className="text-sm font-bold text-on-surface uppercase tracking-widest mb-3 flex items-center gap-2">
                         <User size={16} className="text-primary" /> {t('popup.household_composition', 'Samenstelling van het huishouden')}
                       </h4>
@@ -1186,7 +1186,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                 </div>
 
                 {/* Footer Sluitknop */}
-                <div className="p-5 border-t border-outline bg-white flex items-center justify-between shrink-0">
+                <div className="p-5 border-t border-outline bg-surface flex items-center justify-between shrink-0">
                   {(() => {
                     const profileChat = processedChats.find(c => c.seekerId === showProfile.id);
                     if (profileChat && profileChat.status === 'active') {
@@ -1225,7 +1225,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden"
+              className="bg-background text-on-background rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden border border-outline"
             >
               <div className="p-6 text-center space-y-4">
                 <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-red-100">
@@ -1241,13 +1241,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setChatToTerminate(null)}
-                    className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-[#151515] bg-[#F5F5F5] hover:bg-[#E5E5E5] transition-all"
+                    className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-surface bg-surface-container hover:bg-surface-container-high transition-all"
                   >
                     Annuleren
                   </button>
                   <button
                     onClick={confirmTerminateChat}
-                    className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-700 transition-all shadow-md"
+                    className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-primary bg-red-600 hover:bg-red-700 transition-all shadow-md"
                   >
                     Stoppen
                   </button>
@@ -1270,7 +1270,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] shadow-2xl p-6 lg:p-8 w-full max-w-lg mx-auto"
+              className="bg-background text-on-background rounded-[2rem] shadow-2xl p-6 lg:p-8 w-full max-w-lg mx-auto border border-outline"
             >
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-display font-black text-on-surface">{t('report.translate_title', 'Ontdekte taalafwijking')}</h3>
@@ -1289,7 +1289,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                 <button
                   onClick={handleTranslateReport}
                   disabled={isTranslating}
-                  className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-black uppercase tracking-widest text-white bg-primary hover:bg-primary/95 transition-all shadow-md disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-black uppercase tracking-widest text-on-primary bg-primary hover:bg-primary/95 transition-all shadow-md disabled:opacity-50"
                 >
                   {isTranslating ? (
                     <span className="flex items-center gap-2"><Sparkles className="animate-spin" size={20}/> {t('report.translating', 'Vertalen...')}</span>
@@ -1322,7 +1322,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden p-6"
+              className="bg-background text-on-background rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden p-6 border border-outline"
             >
               <h3 className="text-xl font-display font-black text-on-surface mb-4">
                 {t('chat.schedule_meeting', 'Videogesprek inplannen')}
@@ -1341,13 +1341,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDatePickerForMeeting(false)}
-                  className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-[#151515] bg-[#F5F5F5] hover:bg-[#E5E5E5] transition-all"
+                  className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-surface bg-surface-container hover:bg-surface-container-high transition-all"
                 >
                   Annuleren
                 </button>
                 <button
                   onClick={handleProposeMeeting}
-                  className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md"
+                  className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-primary bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md"
                 >
                   Voorstellen
                 </button>

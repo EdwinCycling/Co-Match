@@ -362,9 +362,9 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[170] bg-white/20 backdrop-blur-md flex flex-col items-center justify-center pointer-events-auto"
+            className="fixed inset-0 z-[170] bg-background/20 backdrop-blur-md flex flex-col items-center justify-center pointer-events-auto"
           >
-            <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl border-4 border-primary/20 flex flex-col items-center gap-8 max-w-sm text-center">
+            <div className="bg-background text-on-background p-12 rounded-[3.5rem] shadow-2xl border-4 border-primary/20 flex flex-col items-center gap-8 max-w-sm text-center">
               <div className="relative">
                 <motion.div 
                   animate={{ rotate: 360, scale: [1, 1.1, 1] }} 
@@ -392,7 +392,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
         className="bg-background md:rounded-[3rem] w-full max-w-4xl h-[100dvh] md:h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-purple-200 dark:border-purple-800"
       >
         {/* Header */}
-        <div className="p-6 md:p-8 bg-purple-600 text-white shrink-0 relative overflow-hidden">
+        <div className="p-6 md:p-8 bg-purple-600 text-on-primary shrink-0 relative overflow-hidden">
           <div className="relative z-10 flex justify-between items-start">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/20 w-fit px-3 py-1 rounded-full">
@@ -422,7 +422,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
         {/* Content */}
         <div className="flex-grow overflow-y-auto p-6 md:p-10 custom-scrollbar bg-purple-50/30 dark:bg-[#020617]">
           <div className="max-w-3xl mx-auto">
-             <div className="bg-white/95 dark:bg-slate-900/90 rounded-3xl p-6 md:p-10 shadow-sm border border-purple-100/50 dark:border-purple-800/30">
+             <div className="bg-surface rounded-3xl p-6 md:p-10 shadow-sm border border-purple-100/50 dark:border-purple-800/30">
                <div className="markdown-body prose prose-purple dark:prose-invert max-w-none text-sm md:text-[15px] leading-relaxed prose-headings:font-display prose-headings:font-black prose-p:text-on-surface-variant">
                   <ReactMarkdown
                     components={{
@@ -464,7 +464,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
         </div>
 
         {/* Footer Actions */}
-        <div className="p-6 border-t border-outline bg-white flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <div className="p-6 border-t border-outline bg-surface flex items-center justify-between gap-4 shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
            <div className="flex gap-2"></div>
            <div className="flex gap-2 w-full md:w-auto justify-end items-center">
              <button 

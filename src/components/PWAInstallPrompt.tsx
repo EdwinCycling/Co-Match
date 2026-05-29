@@ -187,7 +187,7 @@ export default function PWAInstallPrompt({ user, userRole }: PWAInstallPromptPro
             </button>
             <button
               onClick={handleInstall}
-              className="flex-[1.5] bg-white text-primary px-4 py-4 rounded-2xl font-black text-xs shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="flex-[1.5] bg-surface text-primary px-4 py-4 rounded-2xl font-black text-xs shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               <Download size={16} />
               {t('pwa.install_btn')}

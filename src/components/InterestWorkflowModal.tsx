@@ -576,7 +576,7 @@ export default function InterestWorkflowModal({
                   </p>
                   
                   {lastMessageByProvider && lastMessage && (
-                    <div className="mt-3 bg-white/95 dark:bg-slate-900/90 rounded-2xl p-3 border border-emerald-200 dark:border-emerald-800 shadow-sm space-y-1 animate-in fade-in duration-300">
+                    <div className="mt-3 bg-surface rounded-2xl p-3 border border-emerald-200 dark:border-emerald-800 shadow-sm space-y-1 animate-in fade-in duration-300">
                       <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         <MessageSquare size={10} className="fill-current" />
                         <span>Laatste bericht aanbieder:</span>
@@ -604,7 +604,7 @@ export default function InterestWorkflowModal({
               className="bg-primary/5 border-2 border-primary/20 rounded-[2.5rem] p-6 md:p-8 flex flex-col md:flex-row gap-8 items-start md:items-center w-full shadow-lg"
             >
               <div className="shrink-0 relative group">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-white flex items-center justify-center overflow-hidden border-2 border-primary/10 shadow-md group-hover:scale-105 transition-transform">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-surface flex items-center justify-center overflow-hidden border-2 border-primary/10 shadow-md group-hover:scale-105 transition-transform">
                   {providerProfile.photoUrl ? (
                     <img src={providerProfile.photoUrl} alt="Aanbieder" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -632,7 +632,7 @@ export default function InterestWorkflowModal({
                    </div>
                    {providerProfile.country && (
                      <div className="text-right">
-                       <span className="px-4 py-2 bg-white border border-outline rounded-full text-xs font-bold text-on-surface-variant shadow-sm">
+                       <span className="px-4 py-2 bg-surface border border-outline rounded-full text-xs font-bold text-on-surface-variant shadow-sm">
                          {providerProfile.country === 'NL' ? 'Nederland' : 
                           providerProfile.country === 'BE' ? 'België' : 
                           providerProfile.country === 'DE' ? 'Duitsland' : 
@@ -645,7 +645,7 @@ export default function InterestWorkflowModal({
                 </div>
 
                 {providerProfile.description && (
-                  <div className="bg-white/80 p-6 rounded-[2rem] border border-primary/5 relative shadow-sm">
+                  <div className="bg-surface p-6 rounded-[2rem] border border-primary/10 relative shadow-sm">
                      <p className="text-sm md:text-base text-on-surface-variant leading-relaxed whitespace-pre-wrap italic font-medium">
                         "{providerProfile.description}"
                      </p>
@@ -680,7 +680,7 @@ export default function InterestWorkflowModal({
               </div>
 
               {!existingMakelaarReport ? (
-                <div className="bg-white/80 dark:bg-slate-900/50 rounded-3xl p-8 text-center space-y-6 shadow-sm border border-purple-100 dark:border-purple-800/30">
+                <div className="bg-surface rounded-3xl p-8 text-center space-y-6 shadow-sm border border-purple-100 dark:border-purple-800/30">
                   <div className="w-20 h-20 mx-auto bg-purple-50 dark:bg-purple-900/20 rounded-full flex items-center justify-center">
                     <Sparkles size={32} className="text-purple-500" />
                   </div>
@@ -694,7 +694,7 @@ export default function InterestWorkflowModal({
                   <button
                     onClick={runGenerateMakelaar}
                     disabled={isGeneratingMakelaar || loadingMakelaar}
-                    className="mx-auto w-full max-w-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-6 py-4 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="mx-auto w-full max-w-xs bg-purple-600 hover:bg-purple-700 text-on-primary font-bold rounded-xl px-6 py-4 transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isGeneratingMakelaar ? (
                       <>
@@ -710,7 +710,7 @@ export default function InterestWorkflowModal({
                   </button>
                 </div>
               ) : (
-                <div className="bg-white/95 dark:bg-slate-900/90 rounded-3xl p-6 md:p-8 text-center space-y-4 shadow-sm border border-purple-100 dark:border-purple-800/30">
+                <div className="bg-surface rounded-3xl p-6 md:p-8 text-center space-y-4 shadow-sm border border-purple-100 dark:border-purple-800/30">
                    <div className="w-16 h-16 mx-auto bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400">
                      <User size={28} />
                    </div>
@@ -718,7 +718,7 @@ export default function InterestWorkflowModal({
                    <p className="text-sm text-on-surface-variant max-w-sm mx-auto">Bekijk de objectieve inzichten van de Co-Match makelaar.</p>
                    <button
                      onClick={() => setShowMakelaarModal(true)}
-                     className="mx-auto w-full max-w-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl px-6 py-4 transition-all shadow-md flex items-center justify-center gap-2"
+                     className="mx-auto w-full max-w-xs bg-purple-600 hover:bg-purple-700 text-on-primary font-bold rounded-xl px-6 py-4 transition-all shadow-md flex items-center justify-center gap-2"
                    >
                      <Eye size={18} />
                      <span>Bekijk Makelaar Rapport</span>

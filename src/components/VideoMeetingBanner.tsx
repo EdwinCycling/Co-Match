@@ -234,7 +234,7 @@ END:VCALENDAR`;
                </div>
             </div>
 
-            <div className="bg-white/50 p-3 rounded-xl border border-emerald-100/50">
+            <div className="bg-surface p-3 rounded-xl border border-emerald-100/50">
                <p className="text-[11px] text-emerald-800 leading-relaxed">
                  <span className="font-black block mb-1">{t('meeting.safe_free_title', 'Veilig & Kosteloos')}</span>
                  {t('meeting.safe_free_desc', 'Start een veilige meeting via de knop hierboven en deel de link in de chat. Dit is volledig gratis en we slaan geen gegevens op van het gesprek.')}
@@ -275,20 +275,20 @@ END:VCALENDAR`;
                       value={pickedDate}
                       onChange={e => setPickedDate(e.target.value)}
                     />
-                    <button onClick={() => handleAction('repropose')} className="px-3 py-2 bg-primary text-white rounded-lg text-[10px] font-black uppercase"><Check size={14}/></button>
+                    <button onClick={() => handleAction('repropose')} className="px-3 py-2 bg-primary text-on-primary rounded-lg text-[10px] font-black uppercase"><Check size={14}/></button>
                     <button onClick={() => setShowDatePicker(false)} className="px-3 py-2 bg-surface flex-1 text-on-surface-variant rounded-lg border border-outline text-[10px] font-black uppercase"><X size={14}/></button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     <button 
                       onClick={() => handleAction('accept')} 
-                      className="px-4 py-2 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-dark transition-colors shadow-sm"
+                      className="px-4 py-2 bg-primary text-on-primary rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary-dark transition-colors shadow-sm"
                     >
                       {t('meeting.accept', 'Accepteren')}
                     </button>
                     <button 
                       onClick={() => setShowDatePicker(true)} 
-                      className="px-4 py-2 bg-white text-primary border border-primary/30 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 transition-colors"
+                      className="px-4 py-2 bg-surface text-primary border border-primary/30 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 transition-colors"
                     >
                       {t('meeting.new_time', 'Nieuwe tijd')}
                     </button>
