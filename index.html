@@ -9,6 +9,14 @@
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
     <title>Co-Match</title>
     <script>
+      // #region debug-point A:bootstrap
+      const __DEBUG_SERVER_URL__ = 'http://192.168.2.12:7777/event';
+      const __DEBUG_SESSION_ID__ = 'firefox-login-crash';
+      const __debugReport__ = (hypothesisId, msg, data = {}) => fetch(__DEBUG_SERVER_URL__, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: __DEBUG_SESSION_ID__, runId: 'pre-fix', hypothesisId, location: 'index.html:inline-head', msg: `[DEBUG] ${msg}`, data, ts: Date.now() }) }).catch(() => {});
+      __debugReport__('A', 'inline head script start', { href: window.location.href, userAgent: navigator.userAgent, vendor: navigator.vendor, language: navigator.language, platform: navigator.platform, hasInstallTrigger: typeof window.InstallTrigger !== 'undefined', hasServiceWorker: 'serviceWorker' in navigator, hasCaches: 'caches' in window });
+      document.addEventListener('DOMContentLoaded', () => __debugReport__('A', 'dom content loaded', { readyState: document.readyState, rootExists: !!document.getElementById('root') }));
+      // #endregion
+
       // Global diagnostic store
       window.__ALL_LOGS__ = [];
       const originalLog = console.log;
@@ -64,6 +72,16 @@
       };
 
       window.onerror = (message, source, lineno, colno, error) => {
+        // #region debug-point D:global-error
+        __debugReport__('D', 'window.onerror fired', {
+          message: String(message),
+          source: source || '',
+          lineno: lineno || 0,
+          colno: colno || 0,
+          stack: error?.stack || '',
+          readyState: document.readyState
+        });
+        // #endregion
         console.error(`Global error: ${message} at ${source}:${lineno}:${colno}`, error);
         
         const el = document.getElementById('__global_error_banner__');
@@ -81,6 +99,13 @@
       };
 
       window.onunhandledrejection = (event) => {
+        // #region debug-point E:unhandled-rejection
+        __debugReport__('E', 'window.onunhandledrejection fired', {
+          reason: event.reason?.message || String(event.reason),
+          stack: event.reason?.stack || '',
+          readyState: document.readyState
+        });
+        // #endregion
         const reason = event.reason?.message || event.reason;
         console.error(`Unhandled rejection: ${reason}`, event.reason);
 
@@ -100,6 +125,9 @@
       // Deactive / unregister any previous Service Worker that might cache stale pages
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
+          // #region debug-point B:service-worker-state
+          __debugReport__('B', 'service worker registrations fetched', { count: registrations.length });
+          // #endregion
           for (let registration of registrations) {
             registration.unregister().then((success) => {
               if (success) console.log("⚙️ Stale service worker unregistered successfully!");
@@ -109,6 +137,9 @@
       }
       if ('caches' in window) {
         caches.keys().then((keys) => {
+          // #region debug-point C:cache-state
+          __debugReport__('C', 'cache keys fetched', { count: keys.length, keys });
+          // #endregion
           keys.forEach((key) => {
             caches.delete(key).then(() => {
               console.log("🧹 Stale caches cleared:", key);
@@ -204,7 +235,6 @@
     </div>
 
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx" onerror="console.error('❌ FOUT: Kan /src/main.tsx niet laden of compileren in de browser! Controleer browser Console voor details.')"></script>
+    <script type="module" src="/src/main.tsx" onload="fetch('http://192.168.2.12:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'firefox-login-crash',runId:'pre-fix',hypothesisId:'A',location:'index.html:main-script',msg:'[DEBUG] main module script loaded',data:{src:'/src/main.tsx'},ts:Date.now()})}).catch(()=>{})" onerror="fetch('http://192.168.2.12:7777/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'firefox-login-crash',runId:'pre-fix',hypothesisId:'A',location:'index.html:main-script',msg:'[DEBUG] main module script failed to load',data:{src:'/src/main.tsx'},ts:Date.now()})}).catch(()=>{}); console.error('❌ FOUT: Kan /src/main.tsx niet laden of compileren in de browser! Controleer browser Console voor details.')"></script>
   </body>
 </html>
-
