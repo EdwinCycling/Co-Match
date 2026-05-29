@@ -79,12 +79,12 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             ref={modalContainerRef}
-            className="relative w-full max-w-6xl max-h-[90vh] bg-white rounded-2xl md:rounded-[3rem] shadow-2xl overflow-y-auto md:overflow-hidden flex flex-col md:flex-row"
+            className="relative w-full max-w-6xl max-h-[90vh] bg-background text-on-background rounded-2xl md:rounded-[3rem] shadow-2xl overflow-y-auto md:overflow-hidden flex flex-col md:flex-row"
           >
             {/* Sidebar / Tabs */}
-            <div className="w-full md:w-80 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0">
+            <div className="w-full md:w-80 bg-surface-container-low border-r border-outline flex flex-col shrink-0">
               <div className="p-8 pb-4">
-                <h2 className="text-2xl font-black tracking-tight text-gray-900 mb-2">
+                <h2 className="text-2xl font-black tracking-tight text-on-background mb-2">
                   {t('stories.modal.title')}
                 </h2>
                 <div className="h-1.5 w-12 bg-primary rounded-full" />
@@ -97,28 +97,28 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
                     onClick={() => setActiveStory(story.id)}
                     className={`w-full text-left p-6 rounded-3xl transition-all flex items-start gap-4 group ${
                       activeStory === story.id 
-                        ? 'bg-white shadow-xl shadow-gray-200/50 border border-gray-100' 
-                        : 'hover:bg-gray-100'
+                        ? 'bg-surface shadow-xl shadow-black/5 border border-outline' 
+                        : 'hover:bg-surface-container'
                     }`}
                   >
                     <div className={`p-3 rounded-2xl shrink-0 transition-colors ${
-                      activeStory === story.id ? story.color + ' text-white' : 'bg-gray-200 text-gray-400 group-hover:bg-gray-300'
+                      activeStory === story.id ? story.color + ' text-white' : 'bg-surface-container-high text-on-surface-variant group-hover:bg-surface-container-highest'
                     }`}>
                       <story.icon size={20} />
                     </div>
                     <div>
                       <h4 className={`font-black text-sm leading-tight mb-1 ${
-                        activeStory === story.id ? 'text-gray-900' : 'text-gray-500'
+                        activeStory === story.id ? 'text-on-background' : 'text-on-surface-variant'
                       }`}>
                         {story.title}
                       </h4>
-                      <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{story.author}</p>
+                      <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">{story.author}</p>
                     </div>
                   </button>
                 ))}
               </div>
 
-              <div className="p-8 border-t border-gray-100 hidden md:block">
+              <div className="p-8 border-t border-outline hidden md:block">
                 <div className="flex items-center gap-3 text-primary">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                      <Quote size={14} />
@@ -133,7 +133,7 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
               <div className="p-6 flex justify-end shrink-0 md:absolute md:top-4 md:right-4 md:z-10">
                 <button 
                   onClick={onClose}
-                  className="p-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-2xl transition-all"
+                  className="p-3 bg-surface-container hover:bg-surface-container-high text-on-surface-variant rounded-2xl transition-all"
                   id="close-stories-modal"
                 >
                   <X size={24} />
@@ -151,11 +151,11 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
                   >
                     <div className="grid lg:grid-cols-2 gap-12 items-start">
                        <div className="space-y-4">
-                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                          <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-container rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
                              <User size={12} />
                              {currentStory.role}
                           </div>
-                          <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 leading-[1.1] tracking-tight">
+                          <h3 className="text-3xl md:text-4xl lg:text-5xl font-black text-on-background leading-[1.1] tracking-tight">
                             {currentStory.title}
                           </h3>
                        </div>
@@ -180,7 +180,7 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
                           <div className="absolute -left-6 -top-4 text-primary opacity-20 hidden md:block">
                             <Quote size={48} />
                           </div>
-                          <div className="text-base md:text-lg text-gray-600 leading-relaxed space-y-6 whitespace-pre-wrap md:pl-2">
+                          <div className="text-base md:text-lg text-on-surface-variant leading-relaxed space-y-6 whitespace-pre-wrap md:pl-2">
                             {currentStory.content}
                           </div>
                        </div>

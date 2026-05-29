@@ -153,7 +153,7 @@ export function MeetingPlaceSuggester({ lon, lat, onSuggest, initialMinimized = 
                 </button>
               )}
               
-              <div className="w-full bg-white rounded-2xl p-4 border border-outline shadow-sm flex flex-col hover:border-primary/50 transition-all duration-500 overflow-hidden relative">
+              <div className="w-full bg-surface rounded-2xl p-4 border border-outline shadow-sm flex flex-col hover:border-primary/50 transition-all duration-500 overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -mr-8 -mt-8" />
                 
                 <div className="flex gap-3 items-start mb-3 relative z-10">

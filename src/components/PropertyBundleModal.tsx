@@ -75,7 +75,7 @@ const PropertyBundleModal: React.FC<PropertyBundleModalProps> = ({ isOpen, onClo
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden"
+            className="relative bg-background text-on-background w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden"
           >
             <button
               onClick={onClose}

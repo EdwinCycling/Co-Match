@@ -128,13 +128,13 @@ export const HousingTypeCarousel = () => {
           <div className="absolute inset-0 flex items-center justify-center">
             <button 
               onClick={prev}
-              className="absolute left-0 md:left-4 z-40 w-12 h-12 bg-white rounded-full shadow-lg border border-outline flex items-center justify-center text-on-surface hover:text-primary transition-all active:scale-95"
+              className="absolute left-0 md:left-4 z-40 w-12 h-12 bg-surface rounded-full shadow-lg border border-outline flex items-center justify-center text-on-surface hover:text-primary transition-all active:scale-95"
             >
               <ChevronLeft size={24} />
             </button>
             <button 
               onClick={next}
-              className="absolute right-0 md:right-4 z-40 w-12 h-12 bg-white rounded-full shadow-lg border border-outline flex items-center justify-center text-on-surface hover:text-primary transition-all active:scale-95"
+              className="absolute right-0 md:right-4 z-40 w-12 h-12 bg-surface rounded-full shadow-lg border border-outline flex items-center justify-center text-on-surface hover:text-primary transition-all active:scale-95"
             >
               <ChevronRight size={24} />
             </button>
@@ -204,7 +204,7 @@ export const HousingTypeCarousel = () => {
                     }}
                     style={{ pointerEvents: isCenter ? 'auto' : 'auto', cursor: isCenter ? 'default' : 'pointer' }}
                   >
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden h-full group">
+                    <div className="bg-surface rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden h-full group">
                       <div className={`p-8 ${item.bg} flex flex-col items-center gap-6`}>
                         <div className={`w-20 h-20 ${item.bg} ${item.color} rounded-3xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform duration-500`}>
                           <item.icon size={40} />

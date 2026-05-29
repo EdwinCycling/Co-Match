@@ -114,7 +114,7 @@ export function PropertySurroundings({ lat, lon }: { lat: number; lon: number })
           <span className="text-[10px] font-black uppercase tracking-widest text-primary opacity-60 group-hover:opacity-100 transition-opacity">
             {isExpanded ? 'Inklappen' : 'Bekijk omgeving'}
           </span>
-          <div className="p-2 rounded-full bg-white border border-outline/50 shadow-sm">
+          <div className="p-2 rounded-full bg-surface border border-outline/50 shadow-sm">
             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
         </div>
@@ -141,7 +141,7 @@ export function PropertySurroundings({ lat, lon }: { lat: number; lon: number })
                       className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${
                         activeCatIndex === idx 
                         ? `${cat.bg} ${cat.color} border-current shadow-sm` 
-                        : 'bg-white text-on-surface-variant border-outline/30 opacity-60 hover:opacity-100'
+                        : 'bg-surface text-on-surface-variant border-outline/30 opacity-60 hover:opacity-100'
                       }`}
                     >
                       <cat.icon size={14} />
@@ -206,7 +206,7 @@ export function PropertySurroundings({ lat, lon }: { lat: number; lon: number })
                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place.name}, ${place.address}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-white p-4 rounded-2xl border border-outline/30 shadow-sm flex items-center justify-between group hover:border-primary/40 transition-all cursor-pointer"
+                            className="bg-surface p-4 rounded-2xl border border-outline/30 shadow-sm flex items-center justify-between group hover:border-primary/40 transition-all cursor-pointer"
                           >
                             <div className="flex items-center gap-4">
                                <div className={`w-10 h-10 rounded-xl ${activeGroup.bg} ${activeGroup.color} flex items-center justify-center opacity-60 group-hover:opacity-100 transition-opacity`}>

@@ -129,7 +129,7 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
         onClick={(e) => e.stopPropagation()}
         className="bg-background rounded-[2.5rem] w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl border border-outline/20"
       >
-        <div className="p-6 md:p-8 border-b border-outline flex justify-between items-center bg-white">
+        <div className="p-6 md:p-8 border-b border-outline flex justify-between items-center bg-surface">
           <div>
             <h2 className="text-2xl font-display font-black text-on-background flex items-center gap-3">
               <MessageCircle className="text-primary" size={28} />
@@ -171,12 +171,12 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
                   key={chat.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-3xl border border-outline shadow-sm hover:shadow-xl transition-all group overflow-hidden"
+                  className="bg-surface rounded-3xl border border-outline shadow-sm hover:shadow-xl transition-all group overflow-hidden"
                 >
                   <div className="flex flex-col md:flex-row">
                     {/* Visual Section - The Business Card Header */}
                     <div className="md:w-72 p-6 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline flex flex-col items-center text-center">
-                      <div className="w-20 h-20 rounded-2xl bg-white shadow-md flex items-center justify-center overflow-hidden border border-outline mb-4 group-hover:scale-105 transition-transform">
+                      <div className="w-20 h-20 rounded-2xl bg-surface shadow-md flex items-center justify-center overflow-hidden border border-outline mb-4 group-hover:scale-105 transition-transform">
                         {prov?.photoUrl ? (
                           <img src={prov.photoUrl} className="w-full h-full object-cover" alt="" />
                         ) : (
@@ -189,7 +189,7 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
                         <span className="truncate max-w-[180px]">{prop?.title || t('common.loading', 'Laden...')}</span>
                       </div>
                       <div className="flex flex-wrap justify-center gap-2 mt-auto">
-                        <span className="px-2.5 py-1 bg-white border border-outline rounded-full text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
+                        <span className="px-2.5 py-1 bg-surface border border-outline rounded-full text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
                           <MapPin size={10} /> {prop?.city || t('common.location', 'Locatie')}
                         </span>
                         {prov?.verificationLevel >= 2 && (
@@ -205,7 +205,7 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
                       <div className="space-y-4">
                         {/* Latest Message Preview */}
                         <div className="bg-surface-container/30 rounded-2xl p-4 border border-outline/50 relative">
-                           <div className="absolute -top-2.5 left-4 px-2 bg-white text-[9px] font-black uppercase tracking-widest text-primary border border-outline rounded">{t('providerChatsModal.latestFrom', 'Nieuwste van')} {firstName}</div>
+                           <div className="absolute -top-2.5 left-4 px-2 bg-surface text-[9px] font-black uppercase tracking-widest text-primary border border-outline rounded">{t('providerChatsModal.latestFrom', 'Nieuwste van')} {firstName}</div>
                            <div className="text-sm font-medium text-on-surface-variant italic line-clamp-2 min-h-[2.5rem]">
                              {stats.latestProviderText ? `"${stats.latestProviderText}"` : t('chat.no_messages_received', 'Nog geen reactie ontvangen...')}
                            </div>

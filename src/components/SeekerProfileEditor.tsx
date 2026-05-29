@@ -1000,11 +1000,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                    <div className="grid grid-cols-2 gap-4 mt-4">
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-on-surface-variant">{t('seeker.min_roommates')}</label>
-                        <input type="number" min="0" value={profile.min_roommates} onChange={e => setProfile({...profile, min_roommates: parseInt(e.target.value)||0})} className="w-full bg-white border border-outline rounded-xl px-4 py-3 font-bold text-sm" />
+                        <input type="number" min="0" value={profile.min_roommates} onChange={e => setProfile({...profile, min_roommates: parseInt(e.target.value)||0})} className="w-full bg-surface text-on-surface border border-outline rounded-xl px-4 py-3 font-bold text-sm" />
                       </div>
                       <div className="space-y-2">
                         <label className="text-xs font-black uppercase tracking-widest text-on-surface-variant">{t('seeker.max_roommates')}</label>
-                        <input type="number" min="1" value={profile.max_roommates} onChange={e => setProfile({...profile, max_roommates: parseInt(e.target.value)||0})} className="w-full bg-white border border-outline rounded-xl px-4 py-3 font-bold text-sm" />
+                        <input type="number" min="1" value={profile.max_roommates} onChange={e => setProfile({...profile, max_roommates: parseInt(e.target.value)||0})} className="w-full bg-surface text-on-surface border border-outline rounded-xl px-4 py-3 font-bold text-sm" />
                       </div>
                    </div>
                  )}
@@ -1018,7 +1018,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                    {profile.composition?.map((person, idx) => (
                      <div key={idx} className="flex gap-4 items-center bg-surface-container-low p-3 rounded-2xl border border-outline">
                        <span className="font-bold text-on-surface-variant w-6 text-center">{idx + 1}</span>
-                       <select value={person.gender} onChange={e => { const n = [...(profile.composition || [])]; n[idx].gender = e.target.value; setProfile({...profile, composition: n}); }} className="flex-1 bg-white border outline-none py-2 px-3 rounded-xl font-bold">
+                      <select value={person.gender} onChange={e => { const n = [...(profile.composition || [])]; n[idx].gender = e.target.value; setProfile({...profile, composition: n}); }} className="flex-1 bg-surface text-on-surface border outline-none py-2 px-3 rounded-xl font-bold">
                          <option value="">{t('seeker.choose_gender')}</option>
                          <option value="Man">{t('seeker.gender_male')}</option>
                          <option value="Vrouw">{t('seeker.gender_female')}</option>
@@ -1071,11 +1071,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                      return (
                        <div key={key} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                          <span className="font-bold w-32">{item.label}</span>
-                         <div className="flex rounded-xl overflow-hidden border border-outline bg-white w-full md:w-auto">
+                        <div className="flex rounded-xl overflow-hidden border border-outline bg-surface w-full md:w-auto">
                            {['private', 'shared', 'either'].map(type => (
                              <label key={type} className="flex-1 cursor-pointer">
                                <input type="radio" name={`san_${key}`} className="peer hidden" checked={currentVal === type} onChange={() => handlePrefChange('sanitary', key, type)} />
-                               <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-white transition-colors">
+                              <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-on-primary transition-colors">
                                  {type === 'private' ? t('seeker.sanitary_private') : type === 'shared' ? t('seeker.sanitary_shared') : t('seeker.sanitary_no_pref')}
                                </div>
                              </label>
@@ -1087,11 +1087,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
 
                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-6 border-t border-outline">
                      <span className="font-bold w-40">{t('seeker.kitchen_pref')}</span>
-                     <div className="flex rounded-xl overflow-hidden border border-outline bg-white w-full md:w-auto">
+                    <div className="flex rounded-xl overflow-hidden border border-outline bg-surface w-full md:w-auto">
                        {['private', 'shared', 'either'].map(type => (
                          <label key={type} className="flex-1 cursor-pointer">
                            <input type="radio" name="kitchen_type_pref" className="peer hidden" checked={(profile.preferences?.kitchen?.type || 'either') === type} onChange={() => handlePrefChange('kitchen', 'type', type)} />
-                           <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-white transition-colors">
+                          <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-on-primary transition-colors">
                              {type === 'private' ? t('seeker.kitchen_private') : type === 'shared' ? t('seeker.kitchen_shared') : t('seeker.sanitary_no_pref')}
                            </div>
                          </label>
@@ -1101,11 +1101,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
 
                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-6 border-t border-outline">
                      <span className="font-bold w-40">{t('seeker.washer_pref', 'Wasmachine')}</span>
-                     <div className="flex rounded-xl overflow-hidden border border-outline bg-white w-full md:w-auto">
+                     <div className="flex rounded-xl overflow-hidden border border-outline bg-surface w-full md:w-auto">
                        {['private', 'shared', 'none'].map(type => (
                          <label key={type} className="flex-1 cursor-pointer">
                            <input type="radio" name="washer_type_pref" className="peer hidden" checked={(profile.preferences?.laundry?.washer || 'none') === type} onChange={() => handlePrefChange('laundry', 'washer', type)} />
-                           <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-white transition-colors">
+                          <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-on-primary transition-colors">
                              {type === 'private' ? t('seeker.laundry_private', 'Prive') : type === 'shared' ? t('seeker.laundry_shared', 'Gedeeld') : t('seeker.laundry_none', 'Niet nodig')}
                            </div>
                          </label>
@@ -1115,11 +1115,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
 
                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
                      <span className="font-bold w-40">{t('seeker.dryer_pref', 'Droger')}</span>
-                     <div className="flex rounded-xl overflow-hidden border border-outline bg-white w-full md:w-auto">
+                     <div className="flex rounded-xl overflow-hidden border border-outline bg-surface w-full md:w-auto">
                        {['private', 'shared', 'none'].map(type => (
                          <label key={type} className="flex-1 cursor-pointer">
                            <input type="radio" name="dryer_type_pref" className="peer hidden" checked={(profile.preferences?.laundry?.dryer || 'none') === type} onChange={() => handlePrefChange('laundry', 'dryer', type)} />
-                           <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-white transition-colors">
+                          <div className="px-4 py-2 text-sm font-bold text-center peer-checked:bg-primary peer-checked:text-on-primary transition-colors">
                              {type === 'private' ? t('seeker.laundry_private', 'Prive') : type === 'shared' ? t('seeker.laundry_shared', 'Gedeeld') : t('seeker.laundry_none', 'Niet nodig')}
                            </div>
                          </label>
@@ -1153,7 +1153,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         { label: t('common.shared_dutch', 'Gedeeld'), value: 'shared' },
                         { label: t('common.private_dutch', 'Privé'), value: 'private' }
                       ].map(opt => (
-                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 p-4 bg-white border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
+                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 p-4 bg-surface border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
                           <input 
                             type="radio" 
                             name="vacation_pool_seeker" 
@@ -1176,7 +1176,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         { label: t('common.shared_dutch', 'Gedeeld'), value: 'shared' },
                         { label: t('common.private_dutch', 'Privé'), value: 'private' }
                       ].map(opt => (
-                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 p-4 bg-white border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
+                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-2 p-4 bg-surface border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
                           <input 
                             type="radio" 
                             name="vacation_outdoor_kitchen_seeker" 
@@ -1199,7 +1199,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         { label: t('common.yes_no_fac', 'Ja, zonder faciliteiten'), value: 'yes_no_fac' },
                         { label: t('common.yes_fac', 'Ja, met faciliteiten'), value: 'yes_fac' }
                       ].map(opt => (
-                        <label key={opt.value} className="flex-1 min-w-[150px] flex items-center justify-center gap-2 p-4 bg-white border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
+                        <label key={opt.value} className="flex-1 min-w-[150px] flex items-center justify-center gap-2 p-4 bg-surface border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
                           <input 
                             type="radio" 
                             name="vacation_resort_seeker" 
@@ -1222,7 +1222,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                         { label: t('common.shared_dutch', 'Gedeeld'), value: 'shared' },
                         { label: t('common.private_dutch', 'Privé'), value: 'private' }
                       ].map(opt => (
-                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 p-4 bg-white border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
+                        <label key={opt.value} className="flex-1 min-w-[120px] flex items-center justify-center gap-1.5 p-4 bg-surface border-2 border-outline/50 rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[input:checked]:bg-primary/10 has-[input:checked]:text-primary has-[input:checked]:border-primary shadow-sm border-outline/50">
                           <input 
                             type="radio" 
                             name="vacation_sauna_seeker" 
@@ -1254,7 +1254,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                             setProfile({ ...profile, vacation_beach_dist: num });
                           }
                         }}
-                        className="w-full bg-white border border-outline rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold animate-in"
+                        className="w-full bg-surface text-on-surface placeholder:text-on-surface-variant border border-outline rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold animate-in"
                         placeholder="Bijv. 5"
                       />
                     </div>
@@ -1275,7 +1275,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                             setProfile({ ...profile, vacation_airport_dist: num });
                           }
                         }}
-                        className="w-full bg-white border border-outline rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold animate-in"
+                        className="w-full bg-surface text-on-surface placeholder:text-on-surface-variant border border-outline rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all shadow-sm font-bold animate-in"
                         placeholder="Bijv. 45"
                       />
                     </div>
@@ -1286,7 +1286,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                     <label className="text-xs font-black uppercase tracking-wider text-on-surface-variant block">{t('prop.extra.meals', 'Maaltijdmogelijkheden')}</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Ontbijt */}
-                      <div className="flex flex-col gap-2 p-4 bg-white border border-outline rounded-2xl shadow-sm animate-in">
+                      <div className="flex flex-col gap-2 p-4 bg-surface border border-outline rounded-2xl shadow-sm animate-in">
                         <span className="font-bold text-sm text-on-surface">{t('prop.extra.breakfast', 'Mogelijkheid tot ontbijt')}</span>
                         <div className="flex bg-surface-container rounded-xl p-1 text-[11px] font-bold">
                           {[
@@ -1297,7 +1297,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                               key={String(opt.value)}
                               type="button"
                               onClick={() => setProfile({ ...profile, vacation_breakfast: opt.value })}
-                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_breakfast === opt.value ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_breakfast === opt.value ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                             >
                               {opt.label}
                             </button>
@@ -1306,7 +1306,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                       </div>
 
                       {/* Lunch */}
-                      <div className="flex flex-col gap-2 p-4 bg-white border border-outline rounded-2xl shadow-sm animate-in">
+                      <div className="flex flex-col gap-2 p-4 bg-surface border border-outline rounded-2xl shadow-sm animate-in">
                         <span className="font-bold text-sm text-on-surface">{t('prop.extra.lunch', 'Mogelijkheid tot lunch')}</span>
                         <div className="flex bg-surface-container rounded-xl p-1 text-[11px] font-bold">
                           {[
@@ -1317,7 +1317,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                               key={String(opt.value)}
                               type="button"
                               onClick={() => setProfile({ ...profile, vacation_lunch: opt.value })}
-                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_lunch === opt.value ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_lunch === opt.value ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                             >
                               {opt.label}
                             </button>
@@ -1326,7 +1326,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                       </div>
 
                       {/* Diner */}
-                      <div className="flex flex-col gap-2 p-4 bg-white border border-outline rounded-2xl shadow-sm animate-in">
+                      <div className="flex flex-col gap-2 p-4 bg-surface border border-outline rounded-2xl shadow-sm animate-in">
                         <span className="font-bold text-sm text-on-surface">{t('prop.extra.dinner', 'Mogelijkheid tot diner')}</span>
                         <div className="flex bg-surface-container rounded-xl p-1 text-[11px] font-bold">
                           {[
@@ -1337,7 +1337,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                               key={String(opt.value)}
                               type="button"
                               onClick={() => setProfile({ ...profile, vacation_dinner: opt.value })}
-                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_dinner === opt.value ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                              className={`flex-1 py-1.5 rounded-lg transition-all ${!!profile.vacation_dinner === opt.value ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                             >
                               {opt.label}
                             </button>
@@ -1430,7 +1430,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                        const isSpecialItem = ['quiet_street', 'lively_street', 'dead_end_street', 'busy_street', 'shopping_street', 'cooking_together'].includes(item.id);
                        return (
                          <div key={item.id} className="flex flex-col gap-2">
-                           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-outline rounded-2xl gap-3">
+                           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-surface border border-outline rounded-2xl gap-3">
                               <span className="text-sm font-bold text-on-surface ml-1">{item.label}</span>
                               <div className="flex bg-surface-container rounded-xl p-1 text-[10px]">
                                  {(['neutral', 'bonus', 'critical'] as const).map(l => {
@@ -1443,7 +1443,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                                    }
                                    
                                    return (
-                                     <button key={l} onClick={() => handlePrefChange(group.cat as any, item.id, l)} className={`px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter transition-all ${level === l ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                                     <button key={l} onClick={() => handlePrefChange(group.cat as any, item.id, l)} className={`px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter transition-all ${level === l ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
                                        {label}
                                      </button>
                                    );
@@ -1462,7 +1462,7 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                                    { id: 'aquarium', label: t('seeker.pet.aquarium') },
                                    { id: 'reptiles', label: t('seeker.pet.reptiles') }
                                  ].map(pet => (
-                                   <label key={pet.id} className="flex items-center gap-2 px-3 py-2 bg-white border border-outline rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary text-sm font-bold shadow-sm">
+                                   <label key={pet.id} className="flex items-center gap-2 px-3 py-2 bg-surface border border-outline rounded-xl cursor-pointer hover:bg-primary/5 transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:text-primary text-sm font-bold shadow-sm">
                                      <input 
                                        type="checkbox" 
                                        checked={((profile.preferences as any)?.pet_types || []).includes(pet.id)}
@@ -1498,11 +1498,11 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
                   ].map(skill => {
                     const currentVal = (profile.preferences as any)?.tenant_prefs?.[skill.key] || 'no';
                     return (
-                      <div key={skill.key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-white border border-outline rounded-2xl gap-3">
+                      <div key={skill.key} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-surface border border-outline rounded-2xl gap-3">
                         <span className="text-sm font-bold text-on-surface ml-1">{skill.label}</span>
                         <div className="flex bg-surface-container rounded-xl p-1 text-[10px]">
                           {skill.levels.map(l => (
-                            <button key={l} onClick={() => handlePrefChange('tenant_prefs', skill.key, l)} className={`px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter transition-all ${currentVal === l ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                            <button key={l} onClick={() => handlePrefChange('tenant_prefs', skill.key, l)} className={`px-3 py-1.5 rounded-lg font-black uppercase tracking-tighter transition-all ${currentVal === l ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
                               {l === 'no' ? t('seeker.skill_level_no') : l === 'maybe' ? t('seeker.skill_level_maybe') : l === 'yes' ? t('seeker.skill_level_yes') : t('seeker.skill_level_no_problem')}
                             </button>
                           ))}

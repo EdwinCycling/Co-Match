@@ -78,7 +78,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, use
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-background text-on-background rounded-[2.5rem] shadow-2xl overflow-hidden"
           >
             <div className="p-8">
               <div className="flex items-center justify-between mb-8">
@@ -87,45 +87,45 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, use
                     <MessageSquare size={24} />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-gray-900 leading-tight">Neem contact op</h2>
-                    <p className="text-sm text-gray-500 font-medium">Stel je vraag aan het Co-Match team</p>
+                    <h2 className="text-2xl font-black text-on-background leading-tight">Neem contact op</h2>
+                    <p className="text-sm text-on-surface-variant font-medium">Stel je vraag aan het Co-Match team</p>
                   </div>
                 </div>
                 <button 
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-container rounded-full transition-colors"
                 >
-                  <X size={24} className="text-gray-400" />
+                  <X size={24} className="text-on-surface-variant" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-black uppercase tracking-widest text-gray-400 ml-1">Titel (Verplicht)</label>
+                  <label className="text-sm font-black uppercase tracking-widest text-on-surface-variant ml-1">Titel (Verplicht)</label>
                   <input 
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={50}
                     placeholder="Mijn vraag over..."
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
+                    className="w-full px-6 py-4 bg-surface-container-low border border-outline/40 rounded-2xl text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
                     required
                   />
                   <div className="flex justify-end">
-                    <span className={`text-[10px] font-bold ${title.length === 50 ? 'text-red-500' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] font-bold ${title.length === 50 ? 'text-red-500' : 'text-on-surface-variant'}`}>
                       {title.length}/50
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-black uppercase tracking-widest text-gray-400 ml-1">Jouw vraag/opmerking (Verplicht)</label>
+                  <label className="text-sm font-black uppercase tracking-widest text-on-surface-variant ml-1">Jouw vraag/opmerking (Verplicht)</label>
                   <textarea 
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
                     placeholder="Type hier je bericht..."
-                    className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium resize-none"
+                    className="w-full px-6 py-4 bg-surface-container-low border border-outline/40 rounded-2xl text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium resize-none"
                     required
                   />
                 </div>
@@ -140,7 +140,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, use
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
+                  className="w-full bg-primary text-on-primary py-5 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:hover:scale-100"
                 >
                   {isSubmitting ? (
                     <Loader2 className="animate-spin" size={24} />

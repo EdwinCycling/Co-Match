@@ -15,9 +15,9 @@ export const HowItWorksSection: React.FC = () => {
   };
 
   return (
-    <section className="py-24 bg-white relative overflow-hidden" id="how-it-works-section">
+    <section className="py-24 bg-background text-on-background relative overflow-hidden" id="how-it-works-section">
       {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-gray-50 -skew-x-12 translate-x-1/4 -z-10" />
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-surface-container-low -skew-x-12 translate-x-1/4 -z-10" />
       
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
@@ -26,12 +26,12 @@ export const HowItWorksSection: React.FC = () => {
             <div className="inline-block px-6 py-2 bg-primary/10 text-primary rounded-full text-sm font-black uppercase tracking-widest">
               Ontdek de revolutie
             </div>
-            <h2 className="text-4xl md:text-6xl font-black text-gray-900 leading-[1.1] tracking-tight">
+            <h2 className="text-4xl md:text-6xl font-black text-on-background leading-[1.1] tracking-tight">
               {t('how_it_works.teaser.title')}
             </h2>
-            <p className="text-xl md:text-2xl text-gray-600 leading-relaxed max-w-3xl mx-auto px-4">
+            <p className="text-xl md:text-2xl text-on-surface-variant leading-relaxed max-w-3xl mx-auto px-4">
               {t('how_it_works.teaser.subtitle')} 
-              <span className="block mt-6 text-gray-400 text-lg md:text-xl font-medium">
+              <span className="block mt-6 text-on-surface-variant/70 text-lg md:text-xl font-medium">
                 Geen eindeloze rijen contacten, maar diepgaande connecties die verder gaan dan alleen een dak boven je hoofd.
               </span>
             </p>
@@ -53,11 +53,11 @@ export const HowItWorksSection: React.FC = () => {
 
               <button
                 onClick={() => openModal('provider')}
-                className="group flex items-center justify-between gap-6 px-10 py-5 bg-white text-gray-900 rounded-[2rem] font-bold transition-all hover:bg-gray-50 border-2 border-gray-100 hover:-translate-y-1 shadow-xl hover:border-primary/20"
+                className="group flex items-center justify-between gap-6 px-10 py-5 bg-surface text-on-surface rounded-[2rem] font-bold transition-all hover:bg-surface-container-low border-2 border-outline hover:-translate-y-1 shadow-xl hover:border-primary/20"
                 id="how-it-works-cta-provider"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-2.5 bg-gray-100 rounded-xl group-hover:bg-secondary/20 transition-colors">
+                  <div className="p-2.5 bg-surface-container rounded-xl group-hover:bg-secondary/20 transition-colors">
                     <Home size={22} />
                   </div>
                   <span className="text-lg">{t('how_it_works.tabs.provider')}</span>

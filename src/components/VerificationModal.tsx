@@ -219,7 +219,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
                           </div>
 
                           {userVerificationLevel >= 2 && verificationDetails?.level2?.aiResult && (
-                            <div className="ml-10 p-3 bg-white/40 rounded-xl text-xs border border-primary/5">
+                            <div className="ml-10 p-3 bg-surface-container-low rounded-xl text-xs border border-primary/10">
                               <div className="flex justify-between items-center mb-1">
                                 <span className="font-black text-blue-600 uppercase tracking-widest text-[10px]">LinkedIn AI Report</span>
                                 <span className="bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-full font-bold">Score: {verificationDetails.level2.aiResult.score}/100</span>
@@ -243,10 +243,10 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
                        </div>
 
                        <div className="p-4 rounded-2xl border-2 border-outline/10 bg-surface-container-lowest flex items-center gap-4 opacity-50 cursor-not-allowed">
-                          <ShieldCheck className="text-gray-400 shrink-0" size={24} />
+                         <ShieldCheck className="text-on-surface-variant shrink-0" size={24} />
                           <div className="flex-1">
-                             <h4 className="font-bold text-gray-400">Niveau 4: {t('verification.level4.name', 'Identity Check')}</h4>
-                             <p className="text-sm text-gray-400 text-balance">{t('verification.level4.desc', 'Officiële identificatie met paspoort of document en selfie via Stripe.com (Binnenkort).')}</p>
+                             <h4 className="font-bold text-on-surface-variant">Niveau 4: {t('verification.level4.name', 'Identity Check')}</h4>
+                             <p className="text-sm text-on-surface-variant text-balance">{t('verification.level4.desc', 'Officiële identificatie met paspoort of document en selfie via Stripe.com (Binnenkort).')}</p>
                           </div>
                        </div>
                     </div>
@@ -277,7 +277,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
                      <button 
                         onClick={handleLinkedInSubmit}
                         disabled={isVerifyingLinkedIn || !linkedinUrl}
-                        className="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-4 bg-primary text-on-primary font-bold rounded-2xl hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50"
                      >
                         {isVerifyingLinkedIn ? <Monitor className="animate-pulse" /> : <ShieldCheck />}
                         {isVerifyingLinkedIn ? t('verification.linkedin_analyzing') : t('verification.linkedin_verify_btn')}
@@ -353,7 +353,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
                                   </h4>
                                   <p className="text-sm mt-1 mb-3">{scanResult.reason || (scanResult.status === 'APPROVED' ? t('verification.camera_success_desc') : "")}</p>
                                   {scanResult.extracted_data && (
-                                     <div className="text-xs bg-white/50 p-2 rounded">
+                                     <div className="text-xs bg-surface p-2 rounded border border-outline/20">
                                         Detectie Naam: <b>{scanResult.extracted_data.name}</b><br/>
                                         Detectie Adres: <b>{scanResult.extracted_data.address}</b>
                                      </div>

@@ -49,7 +49,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
       title: t('footer.safety.trust.l1.title'),
       desc: t('footer.safety.trust.l1.desc'),
       icon: CheckCircle2,
-      color: "text-gray-400"
+      color: "text-on-surface-variant"
     },
     {
       level: 2,
@@ -90,26 +90,26 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-5xl max-h-[90vh] bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
+            className="relative w-full max-w-5xl max-h-[90vh] bg-background text-on-background rounded-[3rem] shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="p-8 md:p-12 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white/50 backdrop-blur-md sticky top-0 z-10">
+            <div className="p-8 md:p-12 border-b border-outline/20 flex items-center justify-between shrink-0 bg-surface/80 backdrop-blur-md sticky top-0 z-10">
               <div className="flex items-center gap-6">
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                   <Lock size={32} />
                 </div>
                 <div>
-                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight">
+                  <h2 className="text-3xl md:text-4xl font-black text-on-background leading-tight">
                     {t('footer.safety')}
                   </h2>
-                  <p className="text-gray-500 font-medium">Veiligheid en privacy staan bij ons op één.</p>
+                  <p className="text-on-surface-variant font-medium">Veiligheid en privacy staan bij ons op één.</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-4 hover:bg-gray-100 rounded-2xl transition-all group"
+                className="p-4 hover:bg-surface-container rounded-2xl transition-all group"
               >
-                <X size={24} className="text-gray-400 group-hover:text-gray-900" />
+                <X size={24} className="text-on-surface-variant group-hover:text-on-background" />
               </button>
             </div>
 
@@ -117,7 +117,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
             <div className="flex-1 overflow-y-auto p-8 md:p-12 space-y-16">
               {/* Intro */}
               <div className="max-w-3xl">
-                 <p className="text-xl text-gray-600 leading-relaxed font-medium">
+                 <p className="text-xl text-on-surface-variant leading-relaxed font-medium">
                    {t('footer.safety.intro')}
                  </p>
               </div>
@@ -125,13 +125,13 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
               {/* Principles Grid */}
               <div className="grid md:grid-cols-3 gap-8">
                 {safetyPrinciples.map((item, idx) => (
-                  <div key={idx} className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-gray-200/50 transition-all space-y-6">
+                  <div key={idx} className="bg-surface rounded-[2rem] p-8 border border-outline/20 shadow-sm hover:shadow-xl hover:shadow-black/5 transition-all space-y-6">
                     <div className={`w-14 h-14 ${item.bgColor} ${item.color} rounded-2xl flex items-center justify-center`}>
                       <item.icon size={28} />
                     </div>
                     <div className="space-y-3">
-                      <h4 className="text-lg font-black text-gray-900 leading-tight">{item.title}</h4>
-                      <p className="text-sm text-gray-500 leading-relaxed font-medium">{item.desc}</p>
+                      <h4 className="text-lg font-black text-on-background leading-tight">{item.title}</h4>
+                      <p className="text-sm text-on-surface-variant leading-relaxed font-medium">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -146,11 +146,11 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
                           Zekerheid voorop
                        </div>
                        <h3 className="text-3xl font-black">{t('footer.safety.trust.title')}</h3>
-                       <p className="text-gray-400 max-w-xl">{t('footer.safety.trust.desc')}</p>
+                       <p className="text-on-surface-variant max-w-xl">{t('footer.safety.trust.desc')}</p>
                     </div>
                     <div className="text-right hidden md:block">
                        <p className="text-primary text-5xl font-black">1-4</p>
-                       <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Levels van vertrouwen</p>
+                       <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Levels van vertrouwen</p>
                     </div>
                  </div>
 
@@ -165,7 +165,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
                         </div>
                         <div>
                           <h5 className="font-black text-sm mb-1">{lvl.title}</h5>
-                          <p className="text-xs text-gray-500 leading-relaxed font-medium">{lvl.desc}</p>
+                          <p className="text-xs text-on-surface-variant leading-relaxed font-medium">{lvl.desc}</p>
                         </div>
                       </div>
                     ))}
@@ -174,7 +174,7 @@ export const SafetyModal: React.FC<SafetyModalProps> = ({ isOpen, onClose }) => 
 
               {/* Footer text */}
               <div className="text-center pt-8">
-                 <p className="text-sm text-gray-400 font-medium">
+                 <p className="text-sm text-on-surface-variant font-medium">
                    Heb je vragen over ons veiligheidsbeleid? <button className="text-primary font-black hover:underline">Neem contact met ons op</button>.
                  </p>
               </div>

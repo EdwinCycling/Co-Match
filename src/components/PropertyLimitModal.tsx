@@ -61,7 +61,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden"
+            className="relative bg-background text-on-background w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-outline overflow-hidden"
           >
             <button
               onClick={onClose}
@@ -91,7 +91,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder={t('dashboard.provider.max_properties_message_placeholder')}
                     rows={4}
-                    className="w-full bg-surface-container-low border-2 border-outline/30 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-primary outline-none transition-all font-medium resize-none"
+                    className="w-full bg-surface-container-low border-2 border-outline/30 rounded-2xl px-5 py-4 text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary outline-none transition-all font-medium resize-none"
                   />
                 </div>
 

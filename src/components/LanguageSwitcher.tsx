@@ -88,7 +88,7 @@ export const LanguageSwitcher = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-48 bg-white rounded-2xl shadow-xl border border-outline overflow-hidden py-2"
+              className="w-48 bg-surface rounded-2xl shadow-xl border border-outline overflow-hidden py-2"
             >
               {languages.map((lang) => (
                 <button
