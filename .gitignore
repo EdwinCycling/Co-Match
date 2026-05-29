@@ -1,0 +1,13 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+.eslintcache
+.netlify/
+*-firebase-adminsdk-*.json
+firebase-adminsdk-*.json
+serviceAccount*.json

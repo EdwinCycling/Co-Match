@@ -1,0 +1,6 @@
+{
+  "name": "Co-Match",
+  "description": "Een platform voor intentional living en cohousing. Vind jouw ideale woonomgeving door te matchen op waarden en leefstijl.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

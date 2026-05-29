@@ -1,0 +1,242 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global helpers
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { 
+      return isSignedIn() && request.auth.token.get('email_verified', false) == true; 
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // Admin check - Robust and prioritized
+    function isAdmin() { 
+      return isSignedIn() && ('email' in request.auth.token) && (request.auth.token.email == 'edwin@editsolutions.nl');
+    }
+
+    // Global settings (Currency rates, etc)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Health check path
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // User profiles & settings
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+
+      // User Settings Subcollection
+      match /settings/{settingId} {
+        allow read: if true;
+        allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+      }
+    }
+
+
+    // Contact Requests
+    match /contact_requests/{requestId} {
+      allow create: if isSignedIn();
+      allow list, get, update, delete: if isAdmin();
+    }
+
+    // Properties
+    match /properties/{propertyId} {
+      function isValidProperty(data) {
+        return data.keys().hasAll(['ownerId', 'title', 'price', 'location']) &&
+               (data.ownerId == request.auth.uid || isAdmin()) &&
+               data.ownerId is string && data.ownerId.size() <= 128 &&
+               data.title is string && data.title.size() <= 200 &&
+               data.price is number && data.price >= 0 && data.price <= 99999999 &&
+               data.location is string && data.location.size() <= 200 &&
+               data.get('description', '') is string && data.get('description', '').size() <= 15000 &&
+               data.get('address', '') is string && data.get('address', '').size() <= 250 &&
+               data.get('city', '') is string && data.get('city', '').size() <= 100 &&
+               data.get('neighborhood', '') is string && data.get('neighborhood', '').size() <= 100 &&
+               data.get('images', []) is list && data.get('images', []).size() <= 30 &&
+               data.get('teaserImageId', '') is string && data.get('teaserImageId', '').size() <= 128 &&
+               data.get('monthlyAvailability', {}) is map &&
+               data.get('highlightWeeks', []) is list;
+      }
+
+      allow list, get: if isSignedIn();
+      allow create: if isSignedIn() && isValidProperty(incoming());
+      allow update: if isSignedIn() && (
+                      (existing().ownerId == request.auth.uid && incoming().ownerId == existing().ownerId && 
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'ownerId', 'title', 'description', 'price', 'location', 'status', 'features', 
+                         'images', 'teaserImageId', 'completion', 'updatedAt', 'isActive',
+                         'address', 'city', 'neighborhood', 'displayLat', 'displayLng', 
+                         'displayRadius', 'minPrice', 'maxPrice', 'priceType', 'priceDescription',
+                         'createdAt', 'maxInquiries', 'currentInquiries', 'monthlyAvailability', 'highlightWeeks'
+                       ])) ||
+                       // Allow seekers to update inquiries count and auto-pause
+                       (incoming().diff(existing()).affectedKeys().hasAny(['currentInquiries', 'status']) && 
+                        incoming().diff(existing()).affectedKeys().hasOnly(['currentInquiries', 'status', 'updatedAt']) &&
+                        (Math.abs(incoming().currentInquiries - existing().currentInquiries) == 1)) ||
+                      isAdmin()
+                    );
+      allow delete: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Provider Profiles (providers)
+    match /providers/{providerId} {
+      function isValidProviderProfile(data) {
+        return providerId == request.auth.uid &&
+               data.get('companyName', '') is string && data.get('companyName', '').size() <= 200 &&
+               data.get('about', '') is string && data.get('about', '').size() <= 10000;
+      }
+      
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && request.auth.uid == providerId && isValidProviderProfile(incoming());
+      allow delete: if isAdmin() || request.auth.uid == providerId;
+    }
+
+    // Seeker profiles
+    match /seeker_profiles/{profileId} {
+      function isValidSeekerProfile(data) {
+        return data.uid == request.auth.uid &&
+               data.uid is string && data.uid.size() <= 128 &&
+               data.get('nickname', '') is string && data.get('nickname', '').size() <= 100 &&
+               data.get('country', '') is string && data.get('country', '').size() <= 100 &&
+               data.get('city', '') is string && data.get('city', '').size() <= 100 &&
+               data.get('goal', []) is list && data.get('goal', []).size() <= 20 &&
+               data.get('property_type', []) is list && data.get('property_type', []).size() <= 20;
+      }
+      
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidSeekerProfile(incoming()) && profileId == request.auth.uid;
+      allow update: if isSignedIn() && request.auth.uid == profileId && isValidSeekerProfile(incoming());
+    }
+
+    // AI Settings
+    match /ai_settings/{id} {
+      function isValidAiSettings(data) {
+        return (data.role_instruction is string && data.role_instruction.size() <= 10000) &&
+               (data.match_instruction is string && data.match_instruction.size() <= 10000);
+      }
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidAiSettings(incoming());
+    }
+
+    // Matches
+    match /matches/{matchId} {
+      function isValidMatch(data) {
+        return isValidId(data.seekerId) && 
+               isValidId(data.propertyId) &&
+               data.report is string && data.report.size() <= 50000 &&
+               data.createdAt == request.time;
+      }
+      allow get: if isSignedIn() && (
+                    resource.data.seekerId == request.auth.uid ||
+                    resource.data.providerId == request.auth.uid ||
+                    isAdmin()
+                  );
+      allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidMatch(incoming()) && 
+                    incoming().seekerId == request.auth.uid;
+      allow update: if isSignedIn() && (
+                      resource.data.seekerId == request.auth.uid ||
+                      resource.data.providerId == request.auth.uid ||
+                      isAdmin()
+                    );
+      allow delete: if isAdmin();
+    }
+
+    // Makelaar Reports
+    match /makelaar_reports/{reportId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /expert_links/{linkId} {
+      function isValidExpertLink(data) {
+        return data.keys().hasAll(['country', 'category', 'title', 'url']) &&
+               data.country is string && data.country.size() <= 100 &&
+               data.category in ['Juristen', 'Verzekeraars', 'Hypotheekadviseurs', 'Notarissen', 'Verhuizers', 'Overige'] &&
+               data.title is string && data.title.size() <= 200 &&
+               data.url is string && data.url.size() <= 1000 &&
+               data.get('order_index', 0) is number &&
+               data.get('description', '') is string && data.get('description', '').size() <= 1000 &&
+               data.get('linkType', 'lead') in ['lead', 'info'] &&
+               data.get('isActive', true) is bool;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidExpertLink(incoming());
+      allow update: if isAdmin() && isValidExpertLink(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['country', 'category', 'title', 'url', 'order_index', 'description', 'isActive', 'linkType', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // Chats
+    match /chats/{chatId} {
+      function isValidChat(data) {
+        return isValidId(data.seekerId) && 
+               isValidId(data.propertyId) &&
+               isValidId(data.providerId) &&
+               data.messages is list &&
+               data.messages.size() <= 1000;
+      }
+      
+      function isValidMessage(msg) {
+        return msg.senderId is string && 
+               msg.text is string && 
+               msg.text.size() <= 5000 && 
+               (msg.createdAt is timestamp || msg.createdAt is string);
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      
+      allow create: if isSignedIn() && isValidChat(incoming()) && (
+                      incoming().seekerId == request.auth.uid || isAdmin()
+                    );
+      
+      allow update: if isSignedIn() && isValidChat(incoming()) && (
+        (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid) || isAdmin()
+      );
+    }
+
+    // Admin Messages rules
+    match /admin_messages/{messageId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Interactive Feature Gifts rules
+    match /gifts/{giftId} {
+      function isValidGift(data) {
+        return data.title is string && data.title.size() <= 200 &&
+               data.message is string && data.message.size() <= 10000 &&
+               data.targetAudience in ['all', 'huis_zoeker', 'huis_aanbieder'] &&
+               data.startDate is string &&
+               data.isHighPriority is bool &&
+               data.get('type', 'new') in ['new', 'improvement'] &&
+               data.get('imageUrl', '') is string && data.get('imageUrl', '').size() <= 1000;
+      }
+
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && isValidGift(incoming());
+      allow update: if isAdmin() && isValidGift(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['title', 'message', 'targetAudience', 'startDate', 'isHighPriority', 'imageUrl', 'type', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+  }
+}

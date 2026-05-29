@@ -1,0 +1,366 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "role": { 
+          "type": "string", 
+          "enum": ["admin", "huis_aanbieder", "huis_zoeker"] 
+        },
+        "verificationLevel": { "type": "number", "description": "1=email, 2=linkedin, 3=live address, 4=stripe id" },
+        "verificationStatus": {
+          "type": "object",
+          "properties": {
+            "level1": { "type": "boolean" },
+            "level2": {
+              "type": "object",
+              "properties": {
+                "linkedinUrl": { "type": "string" },
+                "score": { "type": "number" },
+                "aiResultStatus": { "type": "string" },
+                "fullResult": { "type": "string" }
+              }
+            },
+            "level3": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["APPROVED", "REJECTED", "PENDING_MANUAL", "NONE"] },
+                "confidence": { "type": "number" },
+                "reason": { "type": "string" },
+                "extractedData": { "type": "object" },
+                "lastAttemptDate": { "type": "string", "format": "date-time" }
+              }
+            },
+            "level4": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string", "enum": ["APPROVED", "REJECTED", "NONE"] }
+              }
+            }
+          }
+        },
+        "smartMatchAlertEnabled": { "type": "boolean", "description": "True if user opted in for Smart Match Alert notifications." },
+        "smartMatchAlertHour": { "type": "number", "description": "The hidden, distributed CET hour (0-23) assigned to this user for match alerts." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "SeekerProfile": {
+      "title": "Seeker Profile",
+      "description": "Information about what a seeker is looking for and their personal habits.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "nickname": { "type": "string" },
+        "goal": { "type": "array", "items": { "type": "string" } },
+        "property_type": { "type": "array", "items": { "type": "string" } },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "available_from": { "type": "string" },
+        "stay_duration_months": { "type": "number" },
+        "is_indefinite": { "type": "boolean" },
+        "budget_min": { "type": "number" },
+        "budget_max": { "type": "number" },
+        "single_occupancy": { "type": "boolean" },
+        "min_roommates": { "type": "number" },
+        "max_roommates": { "type": "number" },
+        "composition": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "gender": { "type": "string" },
+              "age": { "type": "number" }
+            }
+          }
+        },
+        "has_completed_minimal": { "type": "boolean" },
+        "has_completed_extended": { "type": "boolean" },
+        "extended_completion_percentage": { "type": "number" },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "area_private": { "type": "number" },
+            "bedrooms": { "type": "number" },
+            "furnished": { "type": "string" },
+            "sanitary": { "type": "object" },
+            "entrance": { "type": "object" },
+            "kitchen": { "type": "object" },
+            "laundry": { "type": "object" },
+            "heating": { "type": "object" },
+            "internet": { "type": "object" },
+            "outdoor": { "type": "object" },
+            "safety": { "type": "object" },
+            "parking": { "type": "object" },
+            "pets": { "type": "object" },
+            "surroundings": { "type": "object" },
+            "street": { "type": "object" },
+            "modifications": { "type": "object" },
+            "tenant_prefs": { "type": "object" }
+          }
+        }
+      }
+    },
+    "Property": {
+      "title": "Property",
+      "description": "Represents a home listed by a provider.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "address": { "type": "string", "description": "Full private address" },
+        "city": { "type": "string" },
+        "neighborhood": { "type": "string" },
+        "displayLat": { "type": "number" },
+        "displayLng": { "type": "number" },
+        "displayRadius": { "type": "number" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "minPrice": { "type": "number" },
+        "maxPrice": { "type": "number" },
+        "priceType": { "type": "string", "enum": ["fixed", "range", "tbd"] },
+        "priceDescription": { "type": "string", "description": "Extra explanation about the price/costs" },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["available", "rented", "paused"] },
+        "isActive": { "type": "boolean", "description": "Whether the property is visible to seekers" },
+        "maxInquiries": { "type": "number", "default": 10 },
+        "currentInquiries": { "type": "number", "default": 0 },
+        "features": {
+          "type": "object",
+          "properties": {
+            "kitchen_gear": { "type": "object", "description": "Map of item names to usage type (prive/gedeeld)" },
+            "laundry": {
+              "type": "object",
+              "properties": {
+                "washing_machine": { "type": "string", "enum": ["none", "prive", "gedeeld"] },
+                "dryer": { "type": "string", "enum": ["none", "prive", "gedeeld"] }
+              }
+            },
+            "sanitary_details": {
+              "type": "object",
+              "properties": {
+                "bathroom": { "type": "string", "enum": ["none", "prive", "gedeeld"] },
+                "toilet": { "type": "string", "enum": ["none", "prive", "gedeeld"] }
+              }
+            },
+            "heating_types": { "type": "array", "items": { "type": "string" } },
+            "ventilation": { "type": "boolean" },
+            "parking_types": { "type": "array", "items": { "type": "string" } },
+            "outside_usage": { "type": "object", "description": "Map of outside space type to usage (prive/gedeeld)" },
+            "landlord_pets": { "type": "array", "items": { "type": "string" } },
+            "tenant_pets_allowed": { "type": "array", "items": { "type": "string" } },
+            "surroundings": { "type": "object" },
+            "streaming_services": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "images": { 
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "url": { "type": "string" },
+              "category": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "teaserImageId": { "type": "string" },
+        "monthlyAvailability": {
+          "type": "object",
+          "description": "Availability status per month (YYYY-MM)",
+          "additionalProperties": { "type": "string", "enum": ["free", "occupied"] }
+        },
+        "highlightWeeks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of Monday dates when this property is highlighted in the weekly digest"
+        },
+        "completion": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "title", "price", "location"]
+    },
+    "AiSettings": {
+      "title": "AI Settings",
+      "description": "Global settings for AI instructions.",
+      "type": "object",
+      "properties": {
+        "role_instruction": { "type": "string" },
+        "match_instruction": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MatchReport": {
+      "title": "Match Report",
+      "description": "The result of an AI matching analysis.",
+      "type": "object",
+      "properties": {
+        "seekerId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "report": { "type": "string", "description": "The full markdown report from AI" },
+        "scores": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seekerId", "propertyId", "report"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Conversation between seeker and provider.",
+      "type": "object",
+      "properties": {
+        "seekerId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "terminated"], "default": "active" },
+        "messageCount": { "type": "number", "description": "Number of messages sent by seeker" },
+        "messages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "senderId": { "type": "string" },
+              "text": { "type": "string" },
+              "createdAt": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seekerId", "propertyId", "providerId"]
+    },
+    "ExpertLink": {
+      "title": "Expert Link",
+      "description": "External expert partners like Lawyers, Notaries",
+      "type": "object",
+      "properties": {
+        "country": { "type": "string" },
+        "category": { "type": "string", "enum": ["Juristen", "Verzekeraars", "Hypotheekadviseurs", "Notarissen", "Verhuizers", "Overige"] },
+        "order_index": { "type": "number" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "linkType": { "type": "string", "enum": ["lead", "info"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["country", "category", "title", "url"]
+    },
+    "ContactRequest": {
+      "title": "Contact Request",
+      "description": "Stores messages sent to the admin team.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "title": { "type": "string", "maxLength": 50 },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["OPEN", "REPLIED"] }
+      },
+      "required": ["uid", "email", "title", "message"]
+    },
+    "AdminMessage": {
+      "title": "Admin Message",
+      "description": "A customized dismissible message displayed at the top of the interface for selected users.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "targetAudience": { "type": "string", "enum": ["all", "huis_zoeker", "huis_aanbieder"] },
+        "type": { "type": "string", "enum": ["info", "warning", "error"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "isDisabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "targetAudience", "type", "startDate"]
+    },
+    "AppStopConfig": {
+      "title": "App Stop Configuration",
+      "description": "Configuration to freeze or disable the whole application under scheduled conditions.",
+      "type": "object",
+      "properties": {
+        "isEnabled": { "type": "boolean" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "duration": { "type": "string", "description": "Duration in HH:MM format" },
+        "message": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["isEnabled", "startDate", "message"]
+    },
+    "Gift": {
+      "title": "Feature Gift",
+      "description": "An interactive, unboxing What's New gift item containing announcements.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "description": "Rich text message of the gift" },
+        "type": { "type": "string", "enum": ["new", "improvement"] },
+        "targetAudience": { "type": "string", "enum": ["all", "huis_zoeker", "huis_aanbieder"] },
+        "startDate": { "type": "string", "format": "date-time", "description": "Drop time for the gift" },
+        "isHighPriority": { "type": "boolean", "description": "High priority automatically unboxes the feature on user login" },
+        "imageUrl": { "type": "string", "description": "Optional image/GIF URL showing the feature" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "targetAudience", "startDate", "isHighPriority"]
+    }
+  },
+  "firestore": {
+    "/gifts/{giftId}": {
+      "schema": "Gift",
+      "description": "Collection of feature updates presented as premium interactive unboxing gift cards"
+    },
+    "/contact_requests/{requestId}": {
+      "schema": "ContactRequest",
+      "description": "Collection of contact requests from users"
+    },
+    "/admin_messages/{messageId}": {
+      "schema": "AdminMessage",
+      "description": "Collection of administrative system-wide message boxes and announcements"
+    },
+    "/settings/app_stop": {
+      "schema": "AppStopConfig",
+      "description": "Singleton configuration for application stops/freezes"
+    },
+    "/expert_links/{linkId}": {
+      "schema": "ExpertLink",
+      "description": "Collection of external expert partner links"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profile documents."
+    },
+    "/properties/{propertyId}": {
+      "schema": "Property",
+      "description": "Collection of property listings."
+    },
+    "/seeker_profiles/{profileId}": {
+      "schema": "SeekerProfile",
+      "description": "Collection of seeker profiles and preferences."
+    },
+    "/ai_settings/{id}": {
+      "schema": "AiSettings",
+      "description": "Global AI configuration document."
+    },
+    "/matches/{matchId}": {
+      "schema": "MatchReport",
+      "description": "Collection of generated match reports."
+    },
+    "/chats/{chatId}": {
+      "schema": "Chat",
+      "description": "Collection of chat conversations."
+    }
+  }
+}

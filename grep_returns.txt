@@ -1,0 +1,78 @@
+364:    return finalScore > 0 ? Math.min(100, finalScore + addedVariety) : 0;
+554:    return rangeWithDots;
+659:    return Math.round(d / 10) * 10; // Round per 10km for privacy
+723:        return props.map((prop) => {
+742:            return {
+748:          return prop;
+985:        return false;
+997:          return false;
+1001:    return true;
+1028:    return calculateMatchScore(b) - calculateMatchScore(a);
+1593:                      return false;
+1595:                  return p.teaserImageId || (p.images && p.images.length > 0);
+1602:                  return {
+2245:                    return dots;
+2282:                    return availableMonths.map((m, i) => (
+2361:      return true;
+2368:      return true;
+2375:      return true;
+2377:    return false;
+2382:      return true;
+2387:      return true;
+2388:    return false;
+2513:        return out.length > 0 ? out.join(", ") : "-";
+2524:        return "-";
+2534:        return Object.entries(p.features.sanitary_details)
+2562:        return Object.entries(p.features.kitchen_gear)
+2593:        return "Nee";
+2606:        return "Nee";
+2619:        return "Nee";
+2632:        return "Nee";
+2642:        return `${p.features.vacation_beach_dist} km`;
+2652:        return `${p.features.vacation_airport_dist} km`;
+2666:        return meals.length > 0 ? meals.join(", ") : "Geen";
+2675:          return "-";
+2679:        return `${freeMonths} ${t("prop.availability.months_available", "maanden vrij")}`;
+2699:        return p.features.parking_types
+2702:              return t("prop.storage.bicycle", "Fietsenstalling");
+2704:              return t("prop.storage.scooter", "Scooterstalling");
+2706:              return t("prop.storage.motorcycle", "Motorstalling");
+2708:              return t("prop.parking.covered_desc", "Overdekt");
+2710:              return t("prop.storage.ev_charger", "Laadpaal");
+2711:            return v;
+2733:        return out.length > 0 ? out.join(", ") : "-";
+2756:        return base;
+2778:        return res.length > 0 ? res.join(", ") : "-";
+2792:        return active
+2803:            return `${t(`prop.surroundings.${k}`, k)} (${distStr}${v.name ? ` - ${v.name}` : ""})`;
+3390:                      return months.map((m) => {
+4056:                    return months.map((m) => {
+4461:                  return String(t("common.yes", "Ja"));
+4478:                  return val ? String(t("common.yes", "Ja")) : String(t("common.no", "Nee"));
+4506:                  return langName || "-";
+4512:                    return val
+4526:                          return `${typeStr}${ageStr}${exclStr}`;
+4528:                        return t("common.not_available");
+4532:                  return val
+4537:                          return t("prop.storage.bicycle", "Fietsenstalling");
+4539:                          return t("prop.storage.scooter", "Scooterstalling");
+4541:                          return t("prop.storage.motorcycle", "Motorstalling");
+4543:                          return t("prop.parking.covered_desc", "Overdekt");
+4545:                          return t("prop.storage.ev_charger", "Laadpaal");
+4551:                        return t(`prop.pets.${str.toLowerCase()}`, str);
+4554:                        return t(`prop.condition.${str}`, str);
+4556:                      return t(`seeker.item.${str}`, str.replace(/_/g, " "));
+4568:                  return <StarDisplay value={val} />;
+4582:                    return res.length > 0 ? res.join(", ") : "-";
+4612:                    return String(t(`prop.omgeving.${val}`, val as string));
+4644:                  return "-";
+4649:                  return "-";
+4654:                  return String(t("common.yes", "Ja"));
+4664:                  return String(t(tKey, strVal));
+4667:                  return String(t(`prop.condition.${val}`, strVal));
+4671:                    return String(t("common.in_consultation", "In overleg"));
+4674:                  return String(t(`prop.park.${val}`, strVal));
+4677:                return String(t(`seeker.item.${val}`, String(t(`prop.${val}`, strVal))));
+4687:                      return null;
+4695:                      return null;
+4703:                      return null;

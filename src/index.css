@@ -1,0 +1,353 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+@import "tailwindcss";
+
+:root {
+  /* Theme: Rustiek (Default) */
+  --cm-primary: #5A5A40;
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #F0EFEB;
+  --cm-on-primary-container: #5A5A40;
+
+  --cm-secondary: #8B7E66;
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #2D2D2A;
+
+  --cm-background: #F9F7F2;
+  --cm-on-background: #2D2D2A;
+
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #F9F7F2;
+  --cm-surface-container: #F0EFEB;
+  --cm-surface-container-high: #E8E4D9;
+  --cm-surface-container-highest: #DCD9CE;
+  --cm-on-surface: #2D2D2A;
+  --cm-on-surface-variant: #7A7866;
+
+  --cm-outline: #E8E4D9;
+  --cm-outline-variant: #DCD9CE;
+
+  --cm-error: #BA1A1A;
+  --cm-on-error: #ffffff;
+}
+/* 1. Nordic Frost */
+[data-theme="nordic"] {
+  --cm-primary: #0f4c81; /* Arctic blue */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #e6f0fa;
+  --cm-on-primary-container: #0f4c81;
+  --cm-secondary: #4f5f6f; /* Muted deep slate grey for better contrast */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #2c3e50;
+  --cm-background: #fafcfd;
+  --cm-on-background: #2c3e50;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #fafcfd;
+  --cm-surface-container: #f0f4f8;
+  --cm-surface-container-high: #e2e8f0;
+  --cm-surface-container-highest: #cbd5e1;
+  --cm-on-surface: #2c3e50;
+  --cm-on-surface-variant: #556375; /* Improved text contrast */
+  --cm-outline: #e2e8f0;
+  --cm-outline-variant: #cbd5e1;
+}
+
+/* 2. Midnight Neon */
+[data-theme="midnight"] {
+  --cm-primary: #af00f0; /* Deep electric purple for better white-text contrast */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #2b0b3e;
+  --cm-on-primary-container: #e2a5ff;
+  --cm-secondary: #00ffff; /* Cyan */
+  --cm-on-secondary: #000000;
+  --cm-secondary-container: #101010;
+  --cm-on-secondary-container: #00ffff;
+  --cm-background: #050505;
+  --cm-on-background: #f0f0f0;
+  --cm-surface: #101010;
+  --cm-surface-container-low: #0a0a0a;
+  --cm-surface-container: #151515;
+  --cm-surface-container-high: #202020;
+  --cm-surface-container-highest: #2b2b2b;
+  --cm-on-surface: #f0f0f0;
+  --cm-on-surface-variant: #b5b5b5; /* Better text contrast */
+  --cm-outline: #333333;
+  --cm-outline-variant: #444444;
+}
+
+/* 3. Terracotta Earth */
+[data-theme="terracotta"] {
+  --cm-primary: #b34d26; /* Deepened terracotta for reliable white-text contrast */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #fbe6de;
+  --cm-on-primary-container: #b34d26;
+  --cm-secondary: #4d664c; /* Sage green enriched for high white-text contrast */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #3d3b37;
+  --cm-background: #fcfbf5; /* Sand yellow tint */
+  --cm-on-background: #3d3b37;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #fcfbf5;
+  --cm-surface-container: #f4efdf;
+  --cm-surface-container-high: #e8e1cd;
+  --cm-surface-container-highest: #dbd3bc;
+  --cm-on-surface: #3d3b37;
+  --cm-on-surface-variant: #6b685d; /* Better readability */
+  --cm-outline: #e8e1cd;
+  --cm-outline-variant: #dbd3bc;
+}
+
+/* 4. Royal Velvet */
+[data-theme="royal"] {
+  --cm-primary: #000080; /* Navy blue */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #e0e0ff;
+  --cm-on-primary-container: #000040;
+  --cm-secondary: #800020; /* Bordeaux red */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #202020;
+  --cm-background: #f4f4f6;
+  --cm-on-background: #202020;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #f4f4f6;
+  --cm-surface-container: #eaeaec;
+  --cm-surface-container-high: #dedee0;
+  --cm-surface-container-highest: #d0d0d5;
+  --cm-on-surface: #202020;
+  --cm-on-surface-variant: #5a5a5a;
+  --cm-outline: #cba135; /* Muted gold outline accent */
+  --cm-outline-variant: #a08020;
+}
+
+/* 5. Candy Pop */
+[data-theme="candy"] {
+  --cm-primary: #ca1f7b; /* Vivid bubblegum pink dark enough to contrast beautifully with white */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #ffdfef;
+  --cm-on-primary-container: #ca1f7b;
+  --cm-secondary: #98ff98; /* Mint green */
+  --cm-on-secondary: #000000;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #333333;
+  --cm-background: #ffffff;
+  --cm-on-background: #333333;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #fdfdfd;
+  --cm-surface-container: #fff9ea; /* Sun yellow tint */
+  --cm-surface-container-high: #feefc3;
+  --cm-surface-container-highest: #fadd85;
+  --cm-on-surface: #333333;
+  --cm-on-surface-variant: #5a5a5a;
+  --cm-outline: #feefc3;
+  --cm-outline-variant: #fadd85;
+}
+
+/* 6. Deep Forest */
+[data-theme="forest"] {
+  --cm-primary: #154c40; /* Pine green */
+  --cm-on-primary: #f8f6f0;
+  --cm-primary-container: #246e5e;
+  --cm-on-primary-container: #f8f6f0;
+  --cm-secondary: #36454f; /* Charcoal grey */
+  --cm-on-secondary: #f8f6f0;
+  --cm-secondary-container: #2b373f;
+  --cm-on-secondary-container: #f8f6f0;
+  --cm-background: #252d30;
+  --cm-on-background: #f8f6f0; /* Soft cream */
+  --cm-surface: #2b373f;
+  --cm-surface-container-low: #252d30;
+  --cm-surface-container: #334049;
+  --cm-surface-container-high: #3d4a54;
+  --cm-surface-container-highest: #495863;
+  --cm-on-surface: #f8f6f0;
+  --cm-on-surface-variant: #b0bbbf;
+  --cm-outline: #495863;
+  --cm-outline-variant: #5f707c;
+}
+
+/* 7. Digital Gold */
+[data-theme="digital"] {
+  --cm-primary: #116839; /* Richer emerald green for superb white-text contrast */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #e1fae9;
+  --cm-on-primary-container: #116839;
+  --cm-secondary: #3b3c36; /* Graphite grey */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #202020;
+  --cm-background: #f8f9fa;
+  --cm-on-background: #202020;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #f8f9fa;
+  --cm-surface-container: #e9ecef;
+  --cm-surface-container-high: #dee2e6;
+  --cm-surface-container-highest: #ced4da;
+  --cm-on-surface: #202020;
+  --cm-on-surface-variant: #5a626a;
+  --cm-outline: #dee2e6;
+  --cm-outline-variant: #ced4da;
+}
+
+/* 8. Sunset Serum */
+[data-theme="sunset"] {
+  --cm-primary: #d84315; /* Glowing rich burnt coral for reliable contrast with white */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #ffdfd4;
+  --cm-on-primary-container: #d84315;
+  --cm-secondary: #b08ab0; /* Deep seringen/lilac */
+  --cm-on-secondary: #3d2b3d; /* Dark aubergine text for gorgeous readable contrast */
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #3d2b3d;
+  --cm-background: #fff8f5; /* Apricot tint */
+  --cm-on-background: #3d2b3d;
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #fff8f5;
+  --cm-surface-container: #ffece5;
+  --cm-surface-container-high: #ffdacc;
+  --cm-surface-container-highest: #ffcebd;
+  --cm-on-surface: #3d2b3d;
+  --cm-on-surface-variant: #785a78;
+  --cm-outline: #ffdacc;
+  --cm-outline-variant: #ffcebd;
+}
+
+/* 9. Industrial Steel */
+[data-theme="industrial"] {
+  --cm-primary: #ffcc00; /* Signal yellow */
+  --cm-on-primary: #222222;
+  --cm-primary-container: #ffe680;
+  --cm-on-primary-container: #806600;
+  --cm-secondary: #2b6695; /* Deepened steel blue for high-quality white-text contrast */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #ffffff;
+  --cm-on-secondary-container: #222222;
+  --cm-background: #f0f2f5;
+  --cm-on-background: #222222; /* Dark grey */
+  --cm-surface: #ffffff;
+  --cm-surface-container-low: #f0f2f5;
+  --cm-surface-container: #e4e7eb;
+  --cm-surface-container-high: #d2d6db;
+  --cm-surface-container-highest: #bcc2c9;
+  --cm-on-surface: #222222;
+  --cm-on-surface-variant: #5a5a5a;
+  --cm-outline: #d2d6db;
+  --cm-outline-variant: #bcc2c9;
+}
+
+/* 10. Vintage Paper */
+[data-theme="vintage"] {
+  --cm-primary: #4a0404; /* Oxblood red */
+  --cm-on-primary: #ffffff;
+  --cm-primary-container: #e6b3b3;
+  --cm-on-primary-container: #4a0404;
+  --cm-secondary: #111111; /* Ink black */
+  --cm-on-secondary: #ffffff;
+  --cm-secondary-container: #f4ecd8;
+  --cm-on-secondary-container: #111111;
+  --cm-background: #f4ecd8; /* Yellowed paper */
+  --cm-on-background: #111111;
+  --cm-surface: #fdfaf3;
+  --cm-surface-container-low: #f4ecd8;
+  --cm-surface-container: #e9deb9; 
+  --cm-surface-container-high: #decb99;
+  --cm-surface-container-highest: #d2b77a;
+  --cm-on-surface: #111111;
+  --cm-on-surface-variant: #5a5446;
+  --cm-outline: #decb99;
+  --cm-outline-variant: #d2b77a;
+}
+
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Libre Baskerville", serif;
+
+  --color-primary: var(--cm-primary);
+  --color-on-primary: var(--cm-on-primary);
+  --color-primary-container: var(--cm-primary-container);
+  --color-on-primary-container: var(--cm-on-primary-container);
+
+  --color-secondary: var(--cm-secondary);
+  --color-on-secondary: var(--cm-on-secondary);
+  --color-secondary-container: var(--cm-secondary-container);
+  --color-on-secondary-container: var(--cm-on-secondary-container);
+
+  --color-background: var(--cm-background);
+  --color-on-background: var(--cm-on-background);
+
+  --color-surface: var(--cm-surface);
+  --color-surface-container-low: var(--cm-surface-container-low);
+  --color-surface-container: var(--cm-surface-container);
+  --color-surface-container-high: var(--cm-surface-container-high);
+  --color-surface-container-highest: var(--cm-surface-container-highest);
+  --color-on-surface: var(--cm-on-surface);
+  --color-on-surface-variant: var(--cm-on-surface-variant);
+
+  --color-outline: var(--cm-outline);
+  --color-outline-variant: var(--cm-outline-variant);
+
+  --color-error: var(--cm-error);
+  --color-on-error: var(--cm-on-error);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-background antialiased selection:bg-primary/20 overflow-y-auto;
+  }
+
+  /* Fix for missing pointer cursors on clickable elements (Tailwind v4 default change) */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  a[href],
+  label,
+  select,
+  summary,
+  input[type="button"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="file"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide,
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.15);
+  }
+}
