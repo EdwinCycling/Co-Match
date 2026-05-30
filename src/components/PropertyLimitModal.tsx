@@ -65,9 +65,9 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
           >
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 p-2 hover:bg-surface-container rounded-full transition-colors z-10"
+              className="cm-modal-close-button absolute top-6 right-6 p-2 z-10"
             >
-              <X size={20} className="text-on-surface-variant" />
+              <X size={20} />
             </button>
 
             <div className="p-8 md:p-10">

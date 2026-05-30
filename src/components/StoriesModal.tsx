@@ -133,7 +133,7 @@ export const StoriesModal: React.FC<StoriesModalProps> = ({ isOpen, onClose }) =
               <div className="p-6 flex justify-end shrink-0 md:absolute md:top-4 md:right-4 md:z-10">
                 <button 
                   onClick={onClose}
-                  className="p-3 bg-surface-container hover:bg-surface-container-high text-on-surface-variant rounded-2xl transition-all"
+                  className="cm-modal-close-button p-3 rounded-2xl"
                   id="close-stories-modal"
                 >
                   <X size={24} />

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { auth, signInWithGoogle, db } from './lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Coins } from 'lucide-react';
 import ErrorBoundary from './components/ErrorBoundary';
 import CreditsFloatingButton from './components/CreditsFloatingButton';
@@ -107,6 +107,7 @@ import ProviderAllChatsModal from './components/ProviderAllChatsModal';
 import PropertyLimitModal from './components/PropertyLimitModal';
 
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { syncUserProfile, updateUserRole } from './services/userService';
 
 export default function App() {
   console.log("=== [DEBUG] App component rendering start ===");
@@ -338,33 +339,15 @@ export default function App() {
   useEffect(() => {
     let unsubUserDoc: (() => void) | undefined;
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("=== FIREBASE AUTH COMPREHENSIVE DEBUG ===");
-      console.log("currentUser object present:", !!currentUser);
-      
       if (currentUser) {
-        console.log("-> UID:", currentUser.uid);
-        console.log("-> Email:", currentUser.email);
-        console.log("-> isAnonymous:", currentUser.isAnonymous);
-        console.log("-> Email Verified:", currentUser.emailVerified);
-        console.log("-> Provider Data:", JSON.stringify(currentUser.providerData));
-        
-        try {
-          const idTokenResult = await currentUser.getIdTokenResult();
-          console.log("-> Token Claims:", JSON.stringify(idTokenResult.claims));
-        } catch (e) {
-          console.error("-> Error getting token claims:", e);
-        }
-
         setUser(currentUser);
         
         // Luister real-time naar veranderingen in het gebruikersprofiel
         const userRef = doc(db, 'users', currentUser.uid);
-        console.log(`-> Setting up real-time onSnapshot listener on path: /users/${currentUser.uid}`);
         
         unsubUserDoc = onSnapshot(userRef, (userSnap) => {
           if (userSnap.exists()) {
             const userData = userSnap.data();
-            console.log("-> Profile updated realtime! Data:", userData);
             let role = userData.role || 'unassigned';
             
             if (userData.language && userData.language !== i18n.language) {
@@ -378,39 +361,25 @@ export default function App() {
             setIsUserSuspended(!!userData.isSuspended);
             setLoading(false);
           } else {
-            console.log("-> Profile NOT found realtime, creating profile...");
-            const defaultRole = (currentUser.email === 'edwin@editsolutions.nl') ? 'admin' : 'unassigned';
-            const newProfile = {
-              uid: currentUser.uid,
-              email: currentUser.email || '',
-              displayName: currentUser.displayName || 'Nieuwe Gebruiker',
-              photoURL: currentUser.photoURL || '',
-              role: defaultRole,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              hasProfile: true,
-              credits: 100
-            };
-            
-            setDoc(userRef, newProfile).then(() => {
-               console.log("-> Profile created.");
-            }).catch(err => {
-               console.error("-> FAILED to create profile (setDoc):", err);
+            syncUserProfile().then((result) => {
+              setUserRole(result.role || 'unassigned');
+              setIsUserSuspended(false);
+              setLoading(false);
+            }).catch((err) => {
+              console.error("Failed to bootstrap profile:", err);
+              setUserRole('unassigned');
+              setIsUserSuspended(false);
+              setLoading(false);
             });
-            
-            setUserRole(defaultRole);
-            setIsUserSuspended(false);
-            setLoading(false);
           }
         }, (error: any) => {
-          console.error("-> FAILED realtime onSnapshot for /users/" + currentUser.uid, error);
+          console.error("Failed realtime onSnapshot for /users/" + currentUser.uid, error);
           setUserRole('unassigned');
           setIsUserSuspended(false);
           setLoading(false);
         });
 
       } else {
-        console.log("-> No user is signed in.");
         setUser(null);
         setUserRole(null);
         setIsUserSuspended(false);
@@ -484,27 +453,8 @@ export default function App() {
     if (!user) return;
     try {
       console.log("Updating role for user", user.uid, "to", role);
-      const userRef = doc(db, 'users', user.uid);
-      
-      const roleSpecificData: any = {};
-      if (role === 'huis_zoeker') {
-        const snap = await getDoc(userRef);
-        if (!snap.exists() || (!snap.data().credits && snap.data().credits !== 0)) {
-          roleSpecificData.credits = 0;
-        }
-      }
-
-      await setDoc(userRef, {
-        role,
-        hasProfile: true,
-        updatedAt: serverTimestamp(),
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || 'Gebruiker',
-        ...roleSpecificData
-      }, { merge: true });
-
-      setUserRole(role);
+      const result = await updateUserRole(role as 'huis_zoeker' | 'huis_aanbieder');
+      setUserRole(result.role);
       toast.success("Rol succesvol opgeslagen!");
     } catch (e: any) {
       console.error("Fout bij rolopslaan:", e);

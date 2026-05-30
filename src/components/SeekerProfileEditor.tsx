@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { grantCompletionBonus } from '../services/userService';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -414,22 +415,15 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
         updatedAt: serverTimestamp()
       };
       const isComplete = calcMinimalCompletion() === 100;
-      const userRef = doc(db, 'users', auth.currentUser.uid);
-      let extraUserData: any = { hasProfile: true, updatedAt: serverTimestamp() };
+      await setDoc(doc(db, 'seeker_profiles', auth.currentUser.uid), data, { merge: true });
+      await setDoc(doc(db, 'users', auth.currentUser.uid), {
+        hasProfile: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
 
       if (isComplete) {
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          if (!userData.hasReceivedCompletionCredits) {
-            extraUserData.credits = (userData.credits || 0) + 5;
-            extraUserData.hasReceivedCompletionCredits = true;
-          }
-        }
+        await grantCompletionBonus('seeker');
       }
-
-      await setDoc(doc(db, 'seeker_profiles', auth.currentUser.uid), data, { merge: true });
-      await setDoc(userRef, extraUserData, { merge: true });
       if (complete) {
         onComplete();
       } else {

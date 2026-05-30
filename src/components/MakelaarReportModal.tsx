@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
+import { escapeHtml, sanitizeUrl } from '../lib/sanitize';
 
 interface MakelaarReportModalProps {
   report: string;
@@ -67,14 +68,14 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
   };
 
   const getHtmlContent = (overrides: { base64Map?: Map<string, string> } = {}) => {
-    let htmlContent = enhancedReport
+    let htmlContent = escapeHtml(enhancedReport)
       .replace(/^### (.*$)/gim, '<h3 style="font-family: inherit; color: #1e293b; margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25em; font-weight: 800;">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 style="font-family: inherit; color: #0f172a; margin-top: 1.8em; margin-bottom: 0.6em; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.3em; font-weight: 900;">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 style="font-family: inherit; color: #0f172a; margin-top: 2em; margin-bottom: 0.8em; text-align: center; font-weight: 900; font-size: 2.2rem;">$1</h1>')
       .replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
-        const finalUrl = overrides.base64Map?.get(url) || url;
+        const finalUrl = sanitizeUrl(overrides.base64Map?.get(url) || url);
         if (!finalUrl) return ''; // Skip failed images
-        return `<img src="${finalUrl}" alt="${alt}" style="max-height: 400px; width: 100%; object-fit: cover; border-radius: 24px; margin: 2rem 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);" />`;
+        return `<img src="${finalUrl}" alt="${escapeHtml(alt)}" style="max-height: 400px; width: 100%; object-fit: cover; border-radius: 24px; margin: 2rem 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);" />`;
       })
       .replace(/\*\*(.*?)\*\*/g, '<strong style="color: #0f172a; font-weight: 800;">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em style="color: #64748b;">$1</em>')
@@ -162,7 +163,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
                 <div class="report-meta">
                     <div class="meta-item">
                         <span>Project</span>
-                        <strong>${property?.title || 'Woning'}</strong>
+                        <strong>${escapeHtml(property?.title || 'Woning')}</strong>
                     </div>
                     <div class="meta-item">
                         <span>Datum</span>
@@ -408,7 +409,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
             </div>
             <button 
               onClick={onClose}
-              className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-all text-white backdrop-blur-sm"
+              className="cm-modal-close-button p-3 bg-surface/20 text-white border-white/25 hover:bg-surface/30 backdrop-blur-sm"
               title={t('common.close', 'Sluiten')}
             >
               <X size={20} />

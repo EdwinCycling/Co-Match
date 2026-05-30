@@ -43,7 +43,7 @@ function HardwareTestModal({ onClose }: { onClose: () => void }) {
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-white font-bold text-lg flex items-center gap-2"><Video size={20}/> {t('meeting.hardware_test', 'Hardware Test')}</h3>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white p-2"><X size={20}/></button>
+          <button onClick={onClose} className="cm-modal-close-button p-2 bg-zinc-800 text-zinc-100 border-zinc-600/60 hover:bg-zinc-700"><X size={20}/></button>
         </div>
         <div className="aspect-video bg-black rounded-xl overflow-hidden relative border border-white/10 mb-4">
           <video 

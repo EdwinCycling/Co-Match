@@ -20,3 +20,9 @@
 2. Alleen instrumentatie toevoegen in de vroegste loadfase.
 3. Lokale reproduceerbaarheid en productiebewijs vergelijken.
 4. Pas na bewijs een minimale fix toepassen.
+
+## Current Status
+- Instrumentatie toegevoegd in `index.html` voor vroege loadfase.
+- Debug-commit naar GitHub gepusht: `df2e36a`.
+- Betroffen apparaat zit niet op hetzelfde netwerk als de debugmachine, dus directe logcollectie via lokale collector is niet beschikbaar.
+- Volgende stap: bevestigen dat Netlify de nieuwe GitHub-commit heeft gedeployed en daarna fallback-bewijs verzamelen via screenshot/debugpaneel op het getroffen apparaat.

@@ -1,4 +1,4 @@
-import { createGeminiClient, ensurePost, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, ensurePost, getDb, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -9,16 +9,57 @@ export const handler = async (event) => {
 
   return withErrorHandling(async () => {
     const user = await requireUser(event);
-    const { seekerId, language = 'nl', matchInstruction, roleInstruction, propertyData, providerData, seekerData } = parseBody(event);
+    const { seekerId, propertyId, language = 'nl' } = parseBody(event);
 
     if (!seekerId || seekerId !== user.uid) {
       return json(403, { error: 'Error: You can only generate reports for your own account.' });
     }
 
-    if (!propertyData || !seekerData) {
-      return json(400, { error: 'Error: Missing report input data.' });
+    if (!propertyId || typeof propertyId !== 'string' || propertyId.length > 128) {
+      return json(400, { error: 'Error: Missing report property id.' });
     }
 
+    const db = getDb();
+    const [aiSettingsSnap, seekerSnap, propertySnap] = await Promise.all([
+      db.collection('ai_settings').doc('matching').get(),
+      db.collection('seeker_profiles').doc(seekerId).get(),
+      db.collection('properties').doc(propertyId).get(),
+    ]);
+
+    if (!seekerSnap.exists || !propertySnap.exists) {
+      return json(404, { error: 'Error: Missing report source data.' });
+    }
+
+    const aiSettings = aiSettingsSnap.exists ? aiSettingsSnap.data() || {} : {};
+    const rawSeekerData = seekerSnap.data() || {};
+    const propertyData = propertySnap.data() || {};
+    const seekerData = {
+      ...rawSeekerData,
+      displayName: undefined,
+      email: undefined,
+      lastName: undefined,
+      name: undefined,
+      firstName: rawSeekerData.firstName || 'De zoeker',
+    };
+
+    let providerData = {};
+    if (propertyData.ownerId) {
+      const providerSnap = await db.collection('users').doc(propertyData.ownerId).get();
+      if (providerSnap.exists) {
+        const fullData = providerSnap.data() || {};
+        providerData = {
+          ...fullData,
+          displayName: undefined,
+          email: undefined,
+          lastName: undefined,
+          name: undefined,
+          firstName: fullData.firstName || 'De aanbieder',
+        };
+      }
+    }
+
+    const roleInstruction = aiSettings.role_instruction || 'Je bent een matchmaker en wooncoach.';
+    const matchInstruction = aiSettings.match_instruction || 'Vergelijk de gegevens van de aanbieder en zoeker en schrijf een rapport.';
     const ai = createGeminiClient();
     const currentDate = new Date().toISOString().split('T')[0];
     const prompt = `

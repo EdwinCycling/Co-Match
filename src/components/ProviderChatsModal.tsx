@@ -1056,7 +1056,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                     </div>
                     <button 
                       onClick={() => setShowProfile(null)}
-                      className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-all"
+                      className="cm-modal-close-button p-3 bg-surface/20 text-white border-white/25 hover:bg-surface/30"
                     >
                       <X size={20} />
                     </button>

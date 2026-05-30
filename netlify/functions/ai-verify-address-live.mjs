@@ -1,4 +1,4 @@
-import { createGeminiClient, ensurePost, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -8,11 +8,23 @@ export const handler = async (event) => {
   if (postResponse) return postResponse;
 
   return withErrorHandling(async () => {
-    await requireUser(event);
+    const user = await requireUser(event);
     const { imageDataUrl, expectedAddress, expectedName } = parseBody(event);
 
     if (!imageDataUrl || !expectedAddress || !expectedName) {
       return json(400, { error: 'Error: Missing address verification input.' });
+    }
+
+    if (typeof imageDataUrl !== 'string' || !imageDataUrl.startsWith('data:image/') || imageDataUrl.length > 8_000_000) {
+      return json(400, { error: 'Error: Invalid verification image payload.' });
+    }
+
+    if (typeof expectedAddress !== 'string' || expectedAddress.trim().length === 0 || expectedAddress.length > 300) {
+      return json(400, { error: 'Error: Invalid expected address.' });
+    }
+
+    if (typeof expectedName !== 'string' || expectedName.trim().length === 0 || expectedName.length > 200) {
+      return json(400, { error: 'Error: Invalid expected name.' });
     }
 
     const systemInstruction = `SYSTEM INSTRUCTION: IMAGE FRAUD DETECTION
@@ -54,6 +66,27 @@ Expected Address: ${expectedAddress}`;
     if (result.confidence >= 50 && result.confidence <= 70 && result.status !== 'APPROVED') {
       result.status = 'PENDING_MANUAL';
     }
+
+    const db = getDb();
+    const userUpdate = {
+      verificationStatus: {
+        level3: {
+          status: result.status,
+          confidence: Number(result.confidence || 0),
+          reason: result.reason || '',
+          extractedData: result.extracted_data || {},
+          lastAttemptDate: new Date().toISOString(),
+          manualReviewImage: result.status === 'PENDING_MANUAL' ? imageDataUrl : null,
+        },
+      },
+      updatedAt: serverTimestamp(),
+    };
+
+    if (result.status === 'APPROVED') {
+      userUpdate.verificationLevel = 3;
+    }
+
+    await db.collection('users').doc(user.uid).set(userUpdate, { merge: true });
 
     return json(200, result);
   });

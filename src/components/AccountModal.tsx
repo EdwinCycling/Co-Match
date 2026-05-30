@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'motion/react';
 import { X, LogOut, Trash2, CalendarDays, Mail, LogIn, AlertTriangle } from 'lucide-react';
-import { auth, db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
-import { deleteDoc, doc } from 'firebase/firestore';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatDate } from '../lib/formatters';
 
@@ -35,9 +34,6 @@ export default function AccountModal({ onClose }: AccountModalProps) {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
-      // In a real app we'd need to delete the user auth account and other documents.
-      // For now, we will delete the user doc and sign out.
-      await deleteDoc(doc(db, 'users', user.uid));
       await user.delete(); // Note: This might require recent re-authentication in Firebase
       onClose();
     } catch (error) {

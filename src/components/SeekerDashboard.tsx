@@ -174,7 +174,7 @@ function FullScreenGallery({
           e.stopPropagation();
           onClose();
         }}
-        className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all z-10 backdrop-blur-md"
+        className="cm-modal-close-button absolute top-6 right-6 p-3 bg-surface/95 text-on-surface hover:bg-surface-container z-10 backdrop-blur-md"
       >
         <X size={24} />
       </button>
@@ -2081,7 +2081,7 @@ export default function SeekerDashboard({
                           setCurrentPage((p) => Math.max(1, p - 1))
                         }
                         disabled={currentPage === 1}
-                        className="p-3 md:px-6 font-bold rounded-2xl bg-surface-container hover:bg-surface-container-high transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="p-3 md:px-6 font-bold rounded-2xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors disabled:bg-surface-container-low disabled:text-on-surface-variant/60 flex items-center gap-2"
                       >
                         <ChevronLeft size={20} />
                         <span className="hidden sm:inline">
@@ -2105,7 +2105,7 @@ export default function SeekerDashboard({
                                 onClick={() => setCurrentPage(p as number)}
                                 className={`min-w-[40px] h-10 px-3 rounded-2xl font-bold transition-colors flex-shrink-0 ${
                                   currentPage === p
-                                    ? "bg-primary text-white shadow-md"
+                                    ? "bg-primary text-on-primary shadow-md"
                                     : "bg-surface-container hover:bg-surface-container-high text-on-surface"
                                 }`}
                               >
@@ -2120,7 +2120,7 @@ export default function SeekerDashboard({
                           setCurrentPage((p) => Math.min(totalPages, p + 1))
                         }
                         disabled={currentPage === totalPages}
-                        className="p-3 md:px-6 font-bold rounded-2xl bg-surface-container hover:bg-surface-container-high transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="p-3 md:px-6 font-bold rounded-2xl bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors disabled:bg-surface-container-low disabled:text-on-surface-variant/60 flex items-center gap-2"
                       >
                         <span className="hidden sm:inline">
                           {t("seeker.next")}
@@ -2761,7 +2761,7 @@ const PropertyPreviewCard: React.FC<{
             e.stopPropagation();
             onToggleFavorite?.();
           }}
-          className={`p-3 backdrop-blur rounded-full transition-all shadow-md ${isFavorite ? "bg-error text-white scale-110" : "bg-white/80 border-white text-on-surface hover:scale-110"}`}
+          className={`p-3 backdrop-blur rounded-full transition-all shadow-md border ${isFavorite ? "bg-error text-on-primary border-error scale-110" : "bg-surface/95 border-outline/40 text-on-surface hover:bg-surface-container hover:scale-110"}`}
         >
           <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
         </button>
@@ -2774,7 +2774,7 @@ const PropertyPreviewCard: React.FC<{
             }}
           >
             <div
-              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${isSelectedForComparison ? "bg-primary border-primary text-white scale-110 shadow-lg" : "bg-white/80 border-white backdrop-blur-md shadow-sm hover:scale-105"}`}
+              className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${isSelectedForComparison ? "bg-primary border-primary text-on-primary scale-110 shadow-lg" : "bg-surface/95 border-outline/40 text-on-surface backdrop-blur-md shadow-sm hover:bg-surface-container hover:scale-105"}`}
             >
               {isSelectedForComparison ? (
                 <Check size={24} strokeWidth={4} />
@@ -2815,7 +2815,7 @@ const PropertyPreviewCard: React.FC<{
             </button>
           )}
 
-          <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl text-[11px] font-black shadow-lg border border-white/50 text-base-content/80">
+          <div className="bg-surface/95 backdrop-blur-md px-4 py-2 rounded-2xl text-[11px] font-black shadow-lg border border-outline/40 text-on-surface">
             {prop.priceType === "tbd"
               ? t("prop.money.tbd", "Nader te bepalen")
               : prop.priceType === "range"
@@ -3901,7 +3901,7 @@ function PropertyTeaserModal({
               </button>
               <button
                 onClick={onClose}
-                className="p-3 bg-white/90 backdrop-blur rounded-full text-on-surface hover:scale-105 transition-all shadow-md"
+                className="cm-modal-close-button p-3 bg-surface/95 text-on-surface hover:scale-105 backdrop-blur"
               >
                 <X size={20} />
               </button>

@@ -4,6 +4,7 @@ import { X, Check, Search, Globe, Download, Smartphone, Monitor } from 'lucide-r
 import { useSettings, ThemeType, UnitType, DateFormatType } from '../contexts/SettingsContext';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_CURRENCIES } from '../constants';
+import { APP_LANGUAGES, APP_LANGUAGE_STORAGE_KEY, findAppLanguage } from '../config/appLanguages';
 
 interface Props {
   isOpen: boolean;
@@ -110,23 +111,17 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
                   <h3 className="text-sm font-black uppercase tracking-widest text-on-surface">{t('settings.lang')}</h3>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    { id: 'nl', label: 'Nederlands' },
-                    { id: 'nl-BE', label: 'Vlaams' },
-                    { id: 'en', label: 'English' },
-                    { id: 'fr', label: 'Français' }
-                  ].map(lang => {
+                  {APP_LANGUAGES.map(lang => {
                     const activeLang = i18n.resolvedLanguage || i18n.language || '';
-                    const isSelected = activeLang === lang.id || (lang.id === 'nl' && activeLang.startsWith('nl')) || (lang.id === 'en' && activeLang.startsWith('en')) || (lang.id === 'fr' && activeLang.startsWith('fr'));
-                    const exactMatch = activeLang === lang.id;
-                    const isHighlight = exactMatch || (lang.id !== 'nl-BE' && isSelected && activeLang !== 'nl-BE');
+                    const selectedLanguage = findAppLanguage(activeLang);
+                    const isHighlight = selectedLanguage?.code === lang.code;
                     
                     return (
                     <button
-                      key={lang.id}
+                      key={lang.code}
                       onClick={() => {
-                        i18n.changeLanguage(lang.id);
-                        localStorage.setItem('app_lang', lang.id);
+                        i18n.changeLanguage(lang.code);
+                        localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, lang.code);
                       }}
                       className={`p-3 rounded-2xl border-2 font-bold text-xs transition-all text-center flex flex-col items-center gap-1 ${
                         isHighlight
@@ -134,7 +129,7 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
                           : 'border-outline hover:border-primary/30 text-on-surface bg-surface-container-lowest shadow-sm'
                       }`}
                     >
-                      {lang.label}
+                      <span>{lang.label}</span>
                       {isHighlight && <Check size={14} className="mt-1" />}
                     </button>
                     );

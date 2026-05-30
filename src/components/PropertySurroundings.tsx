@@ -99,7 +99,7 @@ export function PropertySurroundings({ lat, lon }: { lat: number; lon: number })
       {/* Collapsed Header */}
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full bg-surface-container/50 hover:bg-surface-container border border-outline/30 rounded-3xl p-6 flex items-center justify-between transition-all group shadow-sm"
+        className="w-full bg-surface-container/70 hover:bg-surface-container border border-outline/40 rounded-3xl p-6 flex items-center justify-between transition-all group shadow-sm"
       >
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
@@ -111,10 +111,10 @@ export function PropertySurroundings({ lat, lon }: { lat: number; lon: number })
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary opacity-60 group-hover:opacity-100 transition-opacity">
+          <span className="text-[10px] font-black uppercase tracking-widest text-primary opacity-90 group-hover:opacity-100 transition-opacity">
             {isExpanded ? 'Inklappen' : 'Bekijk omgeving'}
           </span>
-          <div className="p-2 rounded-full bg-surface border border-outline/50 shadow-sm">
+          <div className="p-2 rounded-full bg-surface text-on-surface border border-outline/50 shadow-sm">
             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </div>
         </div>

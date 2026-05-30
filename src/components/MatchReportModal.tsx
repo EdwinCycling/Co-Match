@@ -19,6 +19,7 @@ import { CREDIT_COSTS } from '../constants';
 import VideoMeetingBanner from './VideoMeetingBanner';
 import { getExistingMatch } from '../services/matchService';
 import { sendProviderChatMessageEmailNotification } from '../services/smartMatchAlertService';
+import { escapeHtml, sanitizeUrl } from '../lib/sanitize';
 
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
@@ -443,9 +444,9 @@ export default function MatchReportModal({ report, property, onClose, initialSho
   };
 
   const getHtmlContent = (overrides: { propertyImageBase64?: string } = {}) => {
-    const propertyImage = overrides.propertyImageBase64 || property.images?.find((img: any) => img.id === property.teaserImageId)?.url || property.images?.[0]?.url;
+    const propertyImage = sanitizeUrl(overrides.propertyImageBase64 || property.images?.find((img: any) => img.id === property.teaserImageId)?.url || property.images?.[0]?.url);
 
-    let htmlContent = localReport
+    let htmlContent = escapeHtml(localReport)
       .replace(/^### (.*$)/gim, '<h3 style="font-family: system-ui, -apple-system, sans-serif; color: #1e293b; margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25em;">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 style="font-family: system-ui, -apple-system, sans-serif; color: #0f172a; margin-top: 1.8em; margin-bottom: 0.6em; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.3em;">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 style="font-family: system-ui, -apple-system, sans-serif; color: #0f172a; margin-top: 2em; margin-bottom: 0.8em; text-align: center;">$1</h1>')
@@ -479,7 +480,7 @@ export default function MatchReportModal({ report, property, onClose, initialSho
         <div class="header">
             <div class="app-title">Co-Match</div>
             <div style="font-size: 1.8rem; font-weight: 900; color: #0f172a; margin-top: 0.5rem; letter-spacing: -0.025em;">AI Match Rapport</div>
-            <div class="meta-info">Gegenereerd voor ${property?.title || 'Woning'} op ${new Date().toLocaleDateString('nl-NL')}</div>
+            <div class="meta-info">Gegenereerd voor ${escapeHtml(property?.title || 'Woning')} op ${new Date().toLocaleDateString('nl-NL')}</div>
         </div>
         ${propertyImage ? `
         <div style="margin-bottom: 2rem; border-radius: 1rem; overflow: hidden; height: 300px;">

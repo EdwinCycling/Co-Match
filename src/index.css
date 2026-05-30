@@ -295,6 +295,14 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    background-color: var(--cm-background);
+    color: var(--cm-on-background);
+  }
+
   body {
     @apply bg-background text-on-background antialiased selection:bg-primary/20 overflow-y-auto;
   }
@@ -355,6 +363,12 @@
   select:disabled,
   textarea:disabled {
     cursor: not-allowed;
+  }
+}
+
+@layer components {
+  .cm-modal-close-button {
+    @apply inline-flex items-center justify-center rounded-full border border-outline/40 bg-surface text-on-surface shadow-sm transition-all hover:bg-surface-container hover:text-on-background;
   }
 }
 

@@ -15,6 +15,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isSafeUserRole(role) {
+      return role in ['unassigned', 'huis_zoeker', 'huis_aanbieder'];
+    }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
@@ -36,13 +39,40 @@ service cloud.firestore {
 
     // User profiles & settings
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+      function changedUserKeys() {
+        return incoming().diff(existing()).affectedKeys();
+      }
+
+      function isValidSelfUserUpdate() {
+        return isOwner(userId) &&
+               changedUserKeys().hasOnly([
+                 'role',
+                 'hasProfile',
+                 'updatedAt',
+                 'language',
+                 'smartMatchAlertEnabled',
+                 'smartMatchAlertHour',
+                 'chatMailAlertEnabled',
+                 'providerChatMailAlertOption'
+               ]) &&
+               (!('role' in incoming()) || isSafeUserRole(incoming().role)) &&
+               (!('hasProfile' in incoming()) || incoming().hasProfile is bool) &&
+               (!('language' in incoming()) || (incoming().language is string && incoming().language.size() <= 20)) &&
+               (!('smartMatchAlertEnabled' in incoming()) || incoming().smartMatchAlertEnabled is bool) &&
+               (!('smartMatchAlertHour' in incoming()) || incoming().smartMatchAlertHour == null || (incoming().smartMatchAlertHour is number && incoming().smartMatchAlertHour >= 0 && incoming().smartMatchAlertHour < 24)) &&
+               (!('chatMailAlertEnabled' in incoming()) || incoming().chatMailAlertEnabled is bool) &&
+               (!('providerChatMailAlertOption' in incoming()) || incoming().providerChatMailAlertOption in ['only_first_chat_ever', 'each_seeker_first_chat', 'always']);
+      }
+
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isValidSelfUserUpdate();
+      allow delete: if isAdmin();
 
       // User Settings Subcollection
       match /settings/{settingId} {
-        allow read: if true;
-        allow write: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow read, write: if isSignedIn() && (isOwner(userId) || isAdmin());
       }
     }
 
@@ -151,9 +181,16 @@ service cloud.firestore {
       allow create: if isSignedIn() && isValidMatch(incoming()) && 
                     incoming().seekerId == request.auth.uid;
       allow update: if isSignedIn() && (
-                      resource.data.seekerId == request.auth.uid ||
-                      resource.data.providerId == request.auth.uid ||
-                      isAdmin()
+                      isAdmin() ||
+                      (
+                        (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['translations']) &&
+                        incoming().seekerId == existing().seekerId &&
+                        incoming().providerId == existing().providerId &&
+                        incoming().propertyId == existing().propertyId &&
+                        incoming().report == existing().report &&
+                        incoming().createdAt == existing().createdAt
+                      )
                     );
       allow delete: if isAdmin();
     }
@@ -161,9 +198,13 @@ service cloud.firestore {
     // Makelaar Reports
     match /makelaar_reports/{reportId} {
       allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+                    reportId == incoming().propertyId &&
+                    isValidId(incoming().providerId) &&
+                    incoming().report is string &&
+                    incoming().report.size() <= 50000;
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -203,7 +244,7 @@ service cloud.firestore {
                (msg.createdAt is timestamp || msg.createdAt is string);
       }
 
-      allow get: if isSignedIn();
+      allow get: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
       
       allow create: if isSignedIn() && isValidChat(incoming()) && (

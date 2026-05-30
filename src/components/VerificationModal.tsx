@@ -182,7 +182,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
                   <h2 className="text-xl font-black">{t('verification.modal_title')}</h2>
                   <TrustBadge level={userVerificationLevel} size="md" className="mt-1" />
                </div>
-               <button onClick={onClose} className="p-2 bg-surface-container rounded-full hover:bg-surface-container-high transition-colors">
+               <button onClick={onClose} className="cm-modal-close-button p-2">
                   <X size={20} />
                </button>
            </div>

@@ -152,7 +152,7 @@ export default function VibeHousing({
     <div className="fixed inset-0 z-50 bg-black flex flex-col overflow-hidden select-none overscroll-none touch-none">
       {/* Top Bar */}
       <div className="absolute top-0 inset-x-0 p-6 flex justify-between items-center z-20 bg-gradient-to-b from-black/60 to-transparent">
-        <button onClick={onClose} className="p-3 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors">
+        <button onClick={onClose} className="cm-modal-close-button p-3 bg-surface/20 text-white border-white/25 hover:bg-surface/30 backdrop-blur-md">
           <X size={24} />
         </button>
         <div className="flex items-center gap-2 text-white/80 font-black uppercase tracking-widest text-sm">

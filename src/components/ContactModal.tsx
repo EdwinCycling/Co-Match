@@ -93,9 +93,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, use
                 </div>
                 <button 
                   onClick={onClose}
-                  className="p-2 hover:bg-surface-container rounded-full transition-colors"
+                  className="cm-modal-close-button p-2"
                 >
-                  <X size={24} className="text-on-surface-variant" />
+                  <X size={24} />
                 </button>
               </div>
 

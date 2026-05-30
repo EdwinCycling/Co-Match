@@ -1,6 +1,7 @@
 import { db } from "../lib/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, arrayUnion } from "firebase/firestore";
 import { calculateCHAScore } from "../components/CoHarmonyAnalysis";
+import { escapeHtml, sanitizeUrl } from "../lib/sanitize";
 
 // Helper to extract clean first name (roepnaam/voornaam) for anonymity and prevent showing emails or full name signatures
 export function getCleanFirstName(fullName: string | null | undefined, fallback: string): string {
@@ -242,20 +243,24 @@ export function generateSmartMatchAlertEmailHTML(
         ? `€ ${property.minPrice || 0} - € ${property.maxPrice || 0}${text.monthly}`
         : `€ ${property.price || 0}${text.monthly}`;
 
-    const propUrl = `${siteUrl}?propertyId=${property.id}`;
+    const propUrl = sanitizeUrl(`${siteUrl}?propertyId=${property.id}`);
+    const safeImageUrl = sanitizeUrl(imageUrl);
+    const safeTitle = escapeHtml(property.title || 'Woning');
+    const safeLocation = escapeHtml(property.location || property.city || 'Onbekende locatie');
+    const safePriceText = escapeHtml(priceText);
 
     matchCardsHtml += `
       <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden;">
         <div style="position: relative; border-radius: 12px; overflow: hidden; margin-bottom: 14px;">
-          <img src="${imageUrl}" alt="${property.title}" style="width: 100%; height: 180px; object-cover: true; object-fit: cover; border-radius: 12px; display: block;" />
+          <img src="${safeImageUrl}" alt="${safeTitle}" style="width: 100%; height: 180px; object-cover: true; object-fit: cover; border-radius: 12px; display: block;" />
           <div style="position: absolute; top: 12px; right: 12px; background-color: #10b981; color: #ffffff; padding: 4px 10px; font-size: 11px; font-weight: 800; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(16,185,129,0.3);">
             ${text.match_badge}
           </div>
         </div>
-        <h3 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #1e293b;">${property.title}</h3>
-        <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b; font-weight: 500;">📍 ${property.location || property.city}</p>
+        <h3 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #1e293b;">${safeTitle}</h3>
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b; font-weight: 500;">📍 ${safeLocation}</p>
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 14px; margin-top: 6px;">
-          <span style="font-size: 16px; font-weight: 800; color: #10b981;">${priceText}</span>
+          <span style="font-size: 16px; font-weight: 800; color: #10b981;">${safePriceText}</span>
           <a href="${propUrl}" style="background-color: #8DAA91; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: inline-block;">
             ${text.view_match_cta}
           </a>

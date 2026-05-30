@@ -55,6 +55,8 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 import { subscribeToExchangeRates } from '../services/currencyService';
 import { DEFAULT_EXCHANGE_RATES } from '../constants';
+import { assignDistributedAlertHour } from '../services/userService';
+import { APP_LANGUAGE_STORAGE_KEY } from '../config/appLanguages';
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   console.log("=== [DEBUG] SettingsProvider rendering start ===");
@@ -91,7 +93,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const localSmartAlertHour = localStorage.getItem('app_smart_match_alert_hour');
     const localChatAlert = localStorage.getItem('app_chat_match_alert');
     const localProviderChatOption = localStorage.getItem('app_provider_chat_match_option');
-    const localLang = localStorage.getItem('app_lang');
+    const localLang = localStorage.getItem(APP_LANGUAGE_STORAGE_KEY);
 
     if (localTheme) setThemeState(localTheme);
     if (localUnit) setUnitState(localUnit);
@@ -162,7 +164,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             }
             if (data.language) {
               i18n.changeLanguage(data.language);
-              localStorage.setItem('app_lang', data.language);
+              localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, data.language);
             }
           } else {
              console.log("-> (SettingsContext) No settings found in Firestore.");
@@ -234,7 +236,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const saveSettings = async () => {
     const user = auth.currentUser;
-    localStorage.setItem('app_lang', i18n.language);
+    localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, i18n.language);
     
     // Only save to firestore if actual user mode
     if (user && !user.isAnonymous && localStorage.getItem('isTestLogin') !== 'true') {
@@ -244,8 +246,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         // If they turned alerts on and have no hour assigned yet, do the distribution allocation!
         if (smartMatchAlertEnabled && assignedHour === null) {
           try {
-            const { assignDistributedMatchAlertHour } = await import('../services/smartMatchAlertService');
-            assignedHour = await assignDistributedMatchAlertHour(user.uid);
+            assignedHour = await assignDistributedAlertHour();
             setSmartMatchAlertHourState(assignedHour);
             localStorage.setItem('app_smart_match_alert_hour', String(assignedHour));
           } catch (e) {

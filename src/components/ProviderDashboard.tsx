@@ -94,6 +94,7 @@ import {
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatDate } from '../lib/formatters';
+import { grantCompletionBonus } from '../services/userService';
 
 export interface PropertyImage {
   id: string;
@@ -444,21 +445,10 @@ export default function ProviderDashboard() {
         createdAt: providerProfile?.createdAt || serverTimestamp()
       }, { merge: true });
       
-      // Under water check for 5 credits upon completing profile (having first name)
+      // Profile completion credits are granted server-side and only once.
       const isComplete = !!(data && data.firstName);
       if (isComplete) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const userData = userSnap.data();
-          if (!userData.hasReceivedCompletionCredits) {
-            await setDoc(userRef, {
-              credits: (userData.credits || 0) + 5,
-              hasReceivedCompletionCredits: true,
-              updatedAt: serverTimestamp()
-            }, { merge: true });
-          }
-        }
+        await grantCompletionBonus('provider');
       }
 
       // Update local state and trigger refresh

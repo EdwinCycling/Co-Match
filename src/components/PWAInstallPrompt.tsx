@@ -136,7 +136,7 @@ export default function PWAInstallPrompt({ user, userRole }: PWAInstallPromptPro
         <div className="absolute top-0 right-0 p-5">
           <button 
             onClick={handleDismiss}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+            className="cm-modal-close-button w-8 h-8 bg-surface/20 text-white border-white/25 hover:bg-surface/30"
           >
             <X size={16} />
           </button>
