@@ -130,6 +130,8 @@ function CreditsModal({ credits, onClose, initialTab }: { credits: number, onClo
   const { t } = useTranslation();
   const [activePricingTab, setActivePricingTab] = useState<'seeker' | 'provider'>(initialTab || 'seeker');
   const currencyConverter = useCurrencyConverter();
+  const creditInfoMore = t('credit.info_more', { defaultValue: '' });
+  const showCreditInfoMore = Boolean(creditInfoMore) && creditInfoMore !== 'credit.info_more';
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -233,13 +235,13 @@ function CreditsModal({ credits, onClose, initialTab }: { credits: number, onClo
               </div>
               {activePricingTab === 'seeker' ? (
                 <>
-                  <h4 className="font-black uppercase text-xs tracking-widest border-b border-white/10 pb-4 text-primary">
+                  <h4 className="font-black uppercase text-xs tracking-widest border-b border-white/10 pb-4 text-white">
                     {t('how_it_works.seeker.costs.title', 'Prijsmodel Zoeker')}
                   </h4>
                   <div className="space-y-4 text-xs text-slate-300">
                     <div className="flex justify-between items-start gap-4">
                       <span className="leading-relaxed">{t('how_it_works.seeker.costs.free')}</span>
-                      <span className="text-primary font-black uppercase tracking-widest shrink-0 text-[10px] bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                      <span className="text-emerald-400 font-black uppercase tracking-widest shrink-0 text-[10px] bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
                         {t('common.free', 'Gratis')}
                       </span>
                     </div>
@@ -253,13 +255,13 @@ function CreditsModal({ credits, onClose, initialTab }: { credits: number, onClo
                 </>
               ) : (
                 <>
-                  <h4 className="font-black uppercase text-xs tracking-widest border-b border-white/10 pb-4 text-primary">
+                  <h4 className="font-black uppercase text-xs tracking-widest border-b border-white/10 pb-4 text-white">
                     {t('how_it_works.provider.costs.title', 'Prijsmodel Aanbieder')}
                   </h4>
                   <div className="space-y-4 text-xs text-slate-300">
                     <div className="flex justify-between items-start gap-4">
                       <span className="leading-relaxed">{t('how_it_works.provider.costs.free')}</span>
-                      <span className="text-primary font-black uppercase tracking-widest shrink-0 text-[10px] bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/20">
+                      <span className="text-emerald-400 font-black uppercase tracking-widest shrink-0 text-[10px] bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
                         {t('common.free', 'Gratis')}
                       </span>
                     </div>
@@ -277,9 +279,9 @@ function CreditsModal({ credits, onClose, initialTab }: { credits: number, onClo
               )}
             </div>
             
-            {t('credit.info_more') && (
+            {showCreditInfoMore && (
               <p className="text-xs text-on-surface-variant font-medium leading-relaxed italic p-4 bg-surface-container-low rounded-2xl border border-outline/10">
-                {t('credit.info_more')}
+                {creditInfoMore}
               </p>
             )}
           </div>

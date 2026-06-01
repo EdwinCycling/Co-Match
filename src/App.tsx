@@ -21,7 +21,7 @@ import {
   Newspaper
 } from 'lucide-react';
 import { auth, signInWithGoogle, db } from './lib/firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { onIdTokenChanged, signOut, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { Coins } from 'lucide-react';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -29,27 +29,14 @@ import CreditsFloatingButton from './components/CreditsFloatingButton';
 import GiftBox from './components/GiftBox';
 import { HowItWorksSection } from './components/HowItWorksSection';
 import { HousingTypeCarousel } from './components/HousingTypeCarousel';
-
-// Static imports for all views and components to bundle into a single consolidated file and prevent 429 Too Many Requests in browser
-import ProviderDashboard from './components/ProviderDashboard';
-import SeekerDashboard from './components/SeekerDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import UserProfilePage from './components/UserProfilePage';
-
-// Static imports for modals to save network connections
-import UserSettingsModal from './components/UserSettingsModal';
-import GenericInfoModal from './components/GenericInfoModal';
-import AccountModal from './components/AccountModal';
-import RoleSelectionModal from './components/RoleSelectionModal';
-
-import { WeeklyHighlightModal } from './components/WeeklyHighlightModal';
-import { HowItWorksModal } from './components/HowItWorksModal';
-import { StoriesModal } from './components/StoriesModal';
-import { ContactModal } from './components/ContactModal';
-import { SafetyModal } from './components/SafetyModal';
 import { APP_VERSION, CREDIT_PACKAGES } from './constants';
 import { Toaster, toast } from 'react-hot-toast';
 import './i18n';
+import {
+  REGION_RESTRICTION_ERROR,
+  REGION_RESTRICTION_MESSAGE,
+  REGION_RESTRICTION_STATUS,
+} from '../shared/regionBlockConfig.mjs';
 
 const CookieBanner = () => {
   const { t } = useTranslation();
@@ -101,21 +88,119 @@ const CookieBanner = () => {
 }
 
 import { LanguageSwitcher } from './components/LanguageSwitcher';
-
-import SeekerChatsModal from './components/SeekerChatsModal';
-import ProviderAllChatsModal from './components/ProviderAllChatsModal';
-import PropertyLimitModal from './components/PropertyLimitModal';
-
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { syncUserProfile, updateUserRole } from './services/userService';
+import { ServerFunctionError } from './lib/serverApi';
+
+
+const APP_STOP_CACHE_KEY = 'co_match_guest_app_stop_v1';
+const APP_STOP_CACHE_TTL_MS = 5 * 60 * 1000;
+const LOGIN_ATTEMPT_COOLDOWN_MS = 8000;
+
+const ProviderDashboard = lazy(() => import('./components/ProviderDashboard'));
+const SeekerDashboard = lazy(() => import('./components/SeekerDashboard'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const UserProfilePage = lazy(() => import('./components/UserProfilePage'));
+const UserSettingsModal = lazy(() => import('./components/UserSettingsModal'));
+const AccountModal = lazy(() => import('./components/AccountModal'));
+const RoleSelectionModal = lazy(() => import('./components/RoleSelectionModal'));
+const SeekerChatsModal = lazy(() => import('./components/SeekerChatsModal'));
+const ProviderAllChatsModal = lazy(() => import('./components/ProviderAllChatsModal'));
+const PropertyLimitModal = lazy(() => import('./components/PropertyLimitModal'));
+const GenericInfoModal = lazy(() => import('./components/GenericInfoModal'));
+const WeeklyHighlightModal = lazy(() =>
+  import('./components/WeeklyHighlightModal').then((module) => ({ default: module.WeeklyHighlightModal }))
+);
+const HowItWorksModal = lazy(() =>
+  import('./components/HowItWorksModal').then((module) => ({ default: module.HowItWorksModal }))
+);
+const StoriesModal = lazy(() =>
+  import('./components/StoriesModal').then((module) => ({ default: module.StoriesModal }))
+);
+const ContactModal = lazy(() =>
+  import('./components/ContactModal').then((module) => ({ default: module.ContactModal }))
+);
+const SafetyModal = lazy(() =>
+  import('./components/SafetyModal').then((module) => ({ default: module.SafetyModal }))
+);
+
+function hasAdminAccess(claims: Record<string, unknown>) {
+  if (claims.admin === true) {
+    return true;
+  }
+
+  if (claims.role === 'admin') {
+    return true;
+  }
+
+  if (Array.isArray(claims.roles) && claims.roles.includes('admin')) {
+    return true;
+  }
+
+  return false;
+}
+
+function isRegionalRestrictionError(error: unknown) {
+  if (!(error instanceof ServerFunctionError)) {
+    return false;
+  }
+
+  return error.status === REGION_RESTRICTION_STATUS
+    && (
+      error.payload?.error === REGION_RESTRICTION_ERROR
+      || error.payload?.code === REGION_RESTRICTION_STATUS
+    );
+}
+
+function readCachedAppStopConfig() {
+  try {
+    const raw = sessionStorage.getItem(APP_STOP_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as { expiresAt?: number; data?: any };
+    if (!parsed || typeof parsed.expiresAt !== 'number' || parsed.expiresAt < Date.now()) {
+      sessionStorage.removeItem(APP_STOP_CACHE_KEY);
+      return null;
+    }
+
+    return parsed.data ?? null;
+  } catch {
+    sessionStorage.removeItem(APP_STOP_CACHE_KEY);
+    return null;
+  }
+}
+
+function writeCachedAppStopConfig(data: any) {
+  try {
+    sessionStorage.setItem(APP_STOP_CACHE_KEY, JSON.stringify({
+      expiresAt: Date.now() + APP_STOP_CACHE_TTL_MS,
+      data,
+    }));
+  } catch {
+    // Ignore cache write failures in the browser.
+  }
+}
+
+function ScreenLoader({ message }: { message: string }) {
+  return (
+    <div className="flex-grow flex items-center justify-center p-12 text-center flex-col gap-6">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent animate-spin rounded-full" />
+      <p className="text-on-surface-variant font-medium">{message}</p>
+    </div>
+  );
+}
 
 export default function App() {
-  console.log("=== [DEBUG] App component rendering start ===");
   const { t, i18n } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoginBusy, setIsLoginBusy] = useState(false);
   const [isFooterExpanded, setIsFooterExpanded] = useState(false);
   const footerRef = useRef<HTMLElement>(null);
+  const regionRestrictionHandledRef = useRef(false);
+  const lastLoginAttemptRef = useRef(0);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -130,6 +215,7 @@ export default function App() {
   }, []);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isUserSuspended, setIsUserSuspended] = useState(false);
+  const [isRegionRestricted, setIsRegionRestricted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -164,7 +250,27 @@ export default function App() {
     }
   });
 
-  const isAdminUser = userRole === 'admin' || user?.email === 'edwin@editsolutions.nl';
+  const isAdminUser = userRole === 'admin';
+
+  const activateRegionalRestriction = async () => {
+    if (regionRestrictionHandledRef.current) {
+      return;
+    }
+
+    regionRestrictionHandledRef.current = true;
+    setIsRegionRestricted(true);
+    setUser(null);
+    setUserRole(null);
+    setIsUserSuspended(false);
+    setLoading(false);
+    toast.error(REGION_RESTRICTION_MESSAGE);
+
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Failed to sign out after regional restriction:', error);
+    }
+  };
 
   // Clock interval for active message check
   useEffect(() => {
@@ -176,20 +282,57 @@ export default function App() {
 
   // Listen to app stop configuration on mount (guest or user)
   useEffect(() => {
-    const sUnsubscribe = onSnapshot(doc(db, 'settings', 'app_stop'), (snapshot) => {
-      if (snapshot.exists()) {
-        setAppStopConfig(snapshot.data());
-      } else {
-        setAppStopConfig(null);
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+
+    const loadGuestAppStop = async () => {
+      const cachedConfig = readCachedAppStopConfig();
+      if (!cancelled && cachedConfig) {
+        setAppStopConfig(cachedConfig);
+        setAppStopReady(true);
       }
+
+      try {
+        const snapshot = await getDoc(doc(db, 'settings', 'app_stop'));
+        if (cancelled) {
+          return;
+        }
+
+        const nextConfig = snapshot.exists() ? snapshot.data() : null;
+        setAppStopConfig(nextConfig);
+        writeCachedAppStopConfig(nextConfig);
+        setAppStopReady(true);
+      } catch (error) {
+        console.error("Error loading app stop:", error);
+        if (!cancelled) {
+          setAppStopReady(true);
+        }
+      }
+    };
+
+    if (!user) {
+      void loadGuestAppStop();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    unsubscribe = onSnapshot(doc(db, 'settings', 'app_stop'), (snapshot) => {
+      const nextConfig = snapshot.exists() ? snapshot.data() : null;
+      setAppStopConfig(nextConfig);
+      writeCachedAppStopConfig(nextConfig);
       setAppStopReady(true);
     }, (error) => {
       console.error("Error listening to app stop:", error);
       setAppStopReady(true);
     });
 
-    return () => sUnsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
+  }, [user]);
 
   // Listen to admin messages real-time (requires user)
   useEffect(() => {
@@ -329,18 +472,27 @@ export default function App() {
     };
     window.addEventListener('open-provider-chat', handleOpenProviderChat);
 
+    const handleOpenProviderAllChats = () => {
+      setActivePage('dashboard');
+      setIsProviderChatsModalOpen(true);
+    };
+    window.addEventListener('open-provider-all-chats', handleOpenProviderAllChats);
+
     return () => {
       window.removeEventListener('open-property-chat', handleOpenChat);
       window.removeEventListener('vibe-status-changed', handleVibeStatus);
       window.removeEventListener('open-provider-chat', handleOpenProviderChat);
+      window.removeEventListener('open-provider-all-chats', handleOpenProviderAllChats);
     };
   }, []);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | undefined;
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
+        const tokenResult = await currentUser.getIdTokenResult();
+        const isAdminClaimUser = hasAdminAccess(tokenResult.claims);
         
         // Luister real-time naar veranderingen in het gebruikersprofiel
         const userRef = doc(db, 'users', currentUser.uid);
@@ -348,24 +500,27 @@ export default function App() {
         unsubUserDoc = onSnapshot(userRef, (userSnap) => {
           if (userSnap.exists()) {
             const userData = userSnap.data();
-            let role = userData.role || 'unassigned';
+            let role = isAdminClaimUser ? 'admin' : userData.role || 'unassigned';
             
             if (userData.language && userData.language !== i18n.language) {
               i18n.changeLanguage(userData.language);
             }
-            
-            if (currentUser.email === 'edwin@editsolutions.nl') {
-               role = 'admin';
-            }
+
             setUserRole(role);
             setIsUserSuspended(!!userData.isSuspended);
             setLoading(false);
           } else {
             syncUserProfile().then((result) => {
-              setUserRole(result.role || 'unassigned');
+              const nextRole = isAdminClaimUser ? 'admin' : result.role || 'unassigned';
+              setUserRole(nextRole);
               setIsUserSuspended(false);
               setLoading(false);
             }).catch((err) => {
+              if (isRegionalRestrictionError(err)) {
+                void activateRegionalRestriction();
+                return;
+              }
+
               console.error("Failed to bootstrap profile:", err);
               setUserRole('unassigned');
               setIsUserSuspended(false);
@@ -426,6 +581,19 @@ export default function App() {
   }, [user, userRole]);
 
   const handleLogin = async () => {
+    const now = Date.now();
+    if (isLoginBusy) {
+      return;
+    }
+
+    if (now - lastLoginAttemptRef.current < LOGIN_ATTEMPT_COOLDOWN_MS) {
+      toast.error('Even wachten voordat je opnieuw inlogt.');
+      return;
+    }
+
+    lastLoginAttemptRef.current = now;
+    setIsLoginBusy(true);
+
     try {
       await signInWithGoogle();
       toast.success(t('auth.login_success', { defaultValue: 'Succesvol ingelogd!' }));
@@ -436,6 +604,8 @@ export default function App() {
       } else {
          toast.error('Login mislukt: ' + error.message);
       }
+    } finally {
+      setIsLoginBusy(false);
     }
   };
 
@@ -457,6 +627,11 @@ export default function App() {
       setUserRole(result.role);
       toast.success("Rol succesvol opgeslagen!");
     } catch (e: any) {
+      if (isRegionalRestrictionError(e)) {
+        await activateRegionalRestriction();
+        return;
+      }
+
       console.error("Fout bij rolopslaan:", e);
       toast.error('Er ging iets mis bij het opslaan van je rol: ' + e.message);
       throw e;
@@ -532,7 +707,7 @@ export default function App() {
     }
   }, [isSeekerChatsModalOpen, isProviderChatsModalOpen]);
 
-  if (isUserSuspended && !isAdminUser) {
+  if (isRegionRestricted) {
     return (
       <div className="fixed inset-0 z-[1000000] bg-black/45 backdrop-blur-md flex flex-col justify-center items-center p-4">
         <div className="w-full max-w-lg bg-white border border-outline rounded-[2.5rem] p-8 text-center shadow-2xl space-y-6">
@@ -541,14 +716,45 @@ export default function App() {
           </div>
           <div className="space-y-2">
             <h1 className="font-display text-2xl md:text-3xl font-black text-on-surface tracking-tight leading-none">
-              Account Gedeactiveerd
+              Toegang geweigerd
             </h1>
             <p className="text-xs font-black uppercase tracking-widest text-[#ef4444]">
-              Toegang tijdelijk beperkt
+              Regionale beperking actief
             </p>
           </div>
           <div className="bg-surface-container-low p-6 rounded-2xl border border-outline/5 text-sm font-medium text-on-surface-variant leading-relaxed">
-            Je account is op non-actief gesteld door de beheerder. Al je woningen zijn momenteel onzichtbaar voor anderen en je hebt geen toegang tot de functies van deze applicatie. Neem voor vragen contact op met support.
+            {REGION_RESTRICTION_MESSAGE}
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#3c372b] text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            <Activity size={16} />
+            Controleer opnieuw
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isUserSuspended && !isAdminUser) {
+    return (
+      <div className="fixed inset-0 z-[1000000] bg-black/45 backdrop-blur-md flex flex-col justify-center items-center p-4">
+        <div className="w-full max-w-lg bg-white border border-outline rounded-[2.5rem] p-8 text-center shadow-2xl space-y-6">
+          <div className="w-24 h-24 bg-red-100 text-[#ef4444] rounded-[2rem] flex items-center justify-center mx-auto flex-col">
+            <span className="text-4xl font-black leading-none">404</span>
+            <X size={20} />
+          </div>
+          <div className="space-y-2">
+            <h1 className="font-display text-2xl md:text-3xl font-black text-on-surface tracking-tight leading-none">
+              {t('account.disabled_404_title', { defaultValue: 'Pagina niet gevonden' })}
+            </h1>
+            <p className="text-xs font-black uppercase tracking-widest text-[#ef4444]">
+              {t('account.disabled_404_badge', { defaultValue: 'Account gedeactiveerd' })}
+            </p>
+          </div>
+          <div className="bg-surface-container-low p-6 rounded-2xl border border-outline/5 text-sm font-medium text-on-surface-variant leading-relaxed">
+            {t('account.disabled_404_desc', { defaultValue: 'Deze pagina is niet beschikbaar omdat je account is gedeactiveerd. Je woningen staan op inactief en je toegang tot de applicatie is geblokkeerd. Neem contact op met support als dit niet klopt.' })}
           </div>
           <button 
             onClick={handleLogout}
@@ -731,7 +937,7 @@ export default function App() {
                 <button
                   onClick={() => setIsWeeklyHighlightModalOpen(true)}
                   className="relative p-2.5 rounded-xl transition-all duration-300 text-on-surface-variant hover:bg-surface-container-high hover:text-primary active:scale-95 cursor-pointer"
-                  title="Wekelijkse Digest Highlight"
+                  title={t('weeklyHighlight.title')}
                 >
                   <div className="flex items-center justify-center">
                     <Newspaper size={22} />
@@ -865,7 +1071,8 @@ export default function App() {
                 <>
                   <button 
                     onClick={handleLogin}
-                    className="flex items-center gap-3 bg-white border border-outline px-6 py-2.5 rounded-full shadow-sm hover:shadow-md transition-all font-bold text-sm text-on-background active:scale-95"
+                    disabled={isLoginBusy}
+                    className="flex items-center gap-3 bg-white border border-outline px-6 py-2.5 rounded-full shadow-sm hover:shadow-md transition-all font-bold text-sm text-on-background active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -873,7 +1080,7 @@ export default function App() {
                       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
-                    {t('nav.login')}
+                    {isLoginBusy ? 'Bezig...' : t('nav.login')}
                   </button>
                 </>
               )}
@@ -946,7 +1153,7 @@ export default function App() {
                           </div>
                         ) : (
                           <div className="flex flex-col gap-3">
-                            <button onClick={handleLogin} className="bg-primary text-on-primary py-3 rounded-xl font-bold">{t('nav.login')}</button>
+                            <button onClick={handleLogin} disabled={isLoginBusy} className="bg-primary text-on-primary py-3 rounded-xl font-bold disabled:opacity-60 disabled:cursor-not-allowed">{isLoginBusy ? 'Bezig...' : t('nav.login')}</button>
                           </div>
                         )}
                         <div className="h-px bg-outline/50 w-full my-2" />
@@ -977,12 +1184,7 @@ export default function App() {
               userName={user.displayName?.split(' ')[0] || 'Nieuwe Gebruiker'} 
             />
           )}
-          <Suspense fallback={
-            <div className="flex-grow flex items-center justify-center p-12 text-center flex-col gap-6">
-               <div className="w-16 h-16 border-4 border-primary border-t-transparent animate-spin rounded-full" />
-               <p className="text-on-surface-variant font-medium">Bezig met laden...</p>
-            </div>
-          }>
+          <Suspense fallback={<ScreenLoader message="Bezig met laden..." />}>
             {activePage === 'profile' ? (
               <UserProfilePage onBack={() => setActivePage('dashboard')} />
             ) : userRole === 'huis_aanbieder' ? (
@@ -995,15 +1197,15 @@ export default function App() {
               </ErrorBoundary>
             ) : !userRole ? (
               <div className="flex-grow flex items-center justify-center p-12 text-center flex-col gap-6">
-                 <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                 <p className="text-on-surface-variant font-medium">Bezig met laden van je profiel...</p>
-                 <button onClick={handleLogout} className="text-primary font-bold underline">Opnieuw proberen / Uitloggen</button>
+                <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-on-surface-variant font-medium">Bezig met laden van je profiel...</p>
+                <button onClick={handleLogout} className="text-primary font-bold underline">Opnieuw proberen / Uitloggen</button>
               </div>
             ) : null}
           </Suspense>
         </div>
       ) : (
-        <LandingPage t={t} onStartProfile={handleLogin} />
+        <LandingPage t={t} onStartProfile={handleLogin} isLoginBusy={isLoginBusy} />
       )}
 
       {/* Footer */}
@@ -1134,12 +1336,22 @@ export default function App() {
             }} 
           />
         )}
-        <UserSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} userRole={userRole || undefined} />
-        <GenericInfoModal isOpen={!!infoModalKey} onClose={() => setInfoModalKey(null)} titleKey={infoModalKey || 'footer.modal_title'} />
-        <HowItWorksModal isOpen={isHowItWorksOpen} onClose={() => setIsHowItWorksOpen(false)} />
-        <StoriesModal isOpen={isStoriesOpen} onClose={() => setIsStoriesOpen(false)} />
-        <SafetyModal isOpen={isSafetyOpen} onClose={() => setIsSafetyOpen(false)} />
-        {user && (
+        {isSettingsOpen && (
+          <UserSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} userRole={userRole || undefined} />
+        )}
+        {infoModalKey && (
+          <GenericInfoModal isOpen={!!infoModalKey} onClose={() => setInfoModalKey(null)} titleKey={infoModalKey} />
+        )}
+        {isHowItWorksOpen && (
+          <HowItWorksModal isOpen={isHowItWorksOpen} onClose={() => setIsHowItWorksOpen(false)} />
+        )}
+        {isStoriesOpen && (
+          <StoriesModal isOpen={isStoriesOpen} onClose={() => setIsStoriesOpen(false)} />
+        )}
+        {isSafetyOpen && (
+          <SafetyModal isOpen={isSafetyOpen} onClose={() => setIsSafetyOpen(false)} />
+        )}
+        {user && isContactOpen && (
           <ContactModal 
             isOpen={isContactOpen} 
             onClose={() => setIsContactOpen(false)} 
@@ -1225,7 +1437,7 @@ export default function App() {
   );
 }
 
-function LandingPage({ t, onStartProfile }: { t: any, onStartProfile: () => void }) {
+function LandingPage({ t, onStartProfile, isLoginBusy }: { t: any, onStartProfile: () => void, isLoginBusy: boolean }) {
   return (
     <main className="flex-grow">
       {/* Hero Section */}
@@ -1233,8 +1445,9 @@ function LandingPage({ t, onStartProfile }: { t: any, onStartProfile: () => void
         <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&q=80&w=2070" 
-            alt="Hero background" 
+            alt="Moderne gedeelde woonruimte voor woningzoekers en woningaanbieders" 
             className="w-full h-full object-cover object-center scale-105"
+            fetchPriority="high"
           />
           <div className="absolute inset-0 bg-primary/40 mix-blend-multiply" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
@@ -1300,9 +1513,10 @@ function LandingPage({ t, onStartProfile }: { t: any, onStartProfile: () => void
 
               <button 
                 onClick={onStartProfile}
-                className="group w-full bg-primary hover:bg-primary/95 text-on-primary font-black text-xl py-6 rounded-2xl shadow-xl shadow-primary/30 transition-all active:scale-95 flex items-center justify-center gap-4"
+                disabled={isLoginBusy}
+                className="group w-full bg-primary hover:bg-primary/95 text-on-primary font-black text-xl py-6 rounded-2xl shadow-xl shadow-primary/30 transition-all active:scale-95 flex items-center justify-center gap-4 disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
               >
-                {t('landing.login_register')}
+                {isLoginBusy ? 'Bezig...' : t('landing.login_register')}
                 <Handshake className="group-hover:translate-x-1 transition-transform" size={24} />
               </button>
 
@@ -1332,8 +1546,9 @@ function LandingPage({ t, onStartProfile }: { t: any, onStartProfile: () => void
           <div className="md:col-span-7 bg-white rounded-[2.5rem] shadow-sm border border-outline overflow-hidden relative group">
             <img 
               src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=2000" 
-              alt="People matching" 
+              alt="Woningzoekers en woningaanbieders vinden een betere match via Co-Match" 
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+              loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-on-surface/60 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 p-8 md:p-12 w-full">
@@ -1391,8 +1606,9 @@ function LandingPage({ t, onStartProfile }: { t: any, onStartProfile: () => void
             <div className="w-16 h-16 rounded-full border-2 border-primary/20 overflow-hidden shadow-lg">
               <img 
                 src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200" 
-                alt="Emma" 
+                alt="Co-Match gebruiker deelt ervaring met veilig en slim woning matchen" 
                 className="w-full h-full object-cover"
+                loading="lazy"
               />
             </div>
             <div className="text-left">

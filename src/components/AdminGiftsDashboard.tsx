@@ -5,9 +5,10 @@ import {
   Gift, Trash2, Edit3, Save, Sparkles, Calendar, Target, 
   Image as ImageIcon, Zap, Search, AlertCircle, Clock, Check, X
 } from 'lucide-react';
-import { collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
+import { deleteGift, saveGift } from '../services/adminWriteService';
 
 interface GiftItem {
   id: string;
@@ -95,7 +96,8 @@ export default function AdminGiftsDashboard() {
     }
 
     try {
-      const data: Omit<GiftItem, 'id'> = {
+      await saveGift({
+        giftId: editingGift?.id,
         title,
         message,
         type,
@@ -103,19 +105,11 @@ export default function AdminGiftsDashboard() {
         startDate,
         isHighPriority,
         imageUrl: imageUrl.trim() || "",
-        updatedAt: serverTimestamp() as any
-      };
+      });
 
       if (editingGift) {
-        await updateDoc(doc(db, 'gifts', editingGift.id), {
-          ...data
-        });
         toast.success(t('admin_gifts.success_updated', "Cadeautje succesvol bijgewerkt!"));
       } else {
-        await addDoc(collection(db, 'gifts'), {
-          ...data,
-          createdAt: serverTimestamp()
-        });
         toast.success(t('admin_gifts.success_created', "Cadeautje succesvol live gezet / ingepland!"));
       }
 
@@ -580,7 +574,7 @@ export default function AdminGiftsDashboard() {
                     const id = deleteConfirmGift.id;
                     setDeleteConfirmGift(null);
                     try {
-                      await deleteDoc(doc(db, 'gifts', id));
+                      await deleteGift(id);
                       toast.success(t('admin_gifts.success_deleted', "Cadeautje succesvol en definitief verwijderd!"));
                       resetForm();
                       setIsModalOpen(false);

@@ -4,7 +4,8 @@ import { X, Check, Search, Globe, Download, Smartphone, Monitor } from 'lucide-r
 import { useSettings, ThemeType, UnitType, DateFormatType } from '../contexts/SettingsContext';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_CURRENCIES } from '../constants';
-import { APP_LANGUAGES, APP_LANGUAGE_STORAGE_KEY, findAppLanguage } from '../config/appLanguages';
+import { APP_LANGUAGE_STORAGE_KEY } from '../config/appLanguages';
+import LanguageSelectList from './LanguageSelectList';
 
 interface Props {
   isOpen: boolean;
@@ -110,30 +111,15 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
                   </div>
                   <h3 className="text-sm font-black uppercase tracking-widest text-on-surface">{t('settings.lang')}</h3>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {APP_LANGUAGES.map(lang => {
-                    const activeLang = i18n.resolvedLanguage || i18n.language || '';
-                    const selectedLanguage = findAppLanguage(activeLang);
-                    const isHighlight = selectedLanguage?.code === lang.code;
-                    
-                    return (
-                    <button
-                      key={lang.code}
-                      onClick={() => {
-                        i18n.changeLanguage(lang.code);
-                        localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, lang.code);
-                      }}
-                      className={`p-3 rounded-2xl border-2 font-bold text-xs transition-all text-center flex flex-col items-center gap-1 ${
-                        isHighlight
-                          ? 'border-primary bg-primary/10 text-primary' 
-                          : 'border-outline hover:border-primary/30 text-on-surface bg-surface-container-lowest shadow-sm'
-                      }`}
-                    >
-                      <span>{lang.label}</span>
-                      {isHighlight && <Check size={14} className="mt-1" />}
-                    </button>
-                    );
-                  })}
+                <div className="bg-surface-container-lowest rounded-3xl border border-outline/30 p-4">
+                  <LanguageSelectList
+                    selectedCode={i18n.resolvedLanguage || i18n.language || ''}
+                    onSelect={(langCode) => {
+                      i18n.changeLanguage(langCode);
+                      localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, langCode);
+                    }}
+                    maxHeightClassName="max-h-72"
+                  />
                 </div>
               </section>
 

@@ -45,6 +45,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     if (!url) return '';
     if (url.startsWith('data:')) return url;
+    if (url.includes('firebasestorage.googleapis.com')) return '';
     try {
       // Use no-cache to avoid some CORS issues with cached responses
       const fetchUrl = url.includes('?') ? `${url}&cb=${Date.now()}` : `${url}?cb=${Date.now()}`;
@@ -73,7 +74,7 @@ export default function MakelaarReportModal({ report, property, onClose }: Makel
       .replace(/^## (.*$)/gim, '<h2 style="font-family: inherit; color: #0f172a; margin-top: 1.8em; margin-bottom: 0.6em; border-bottom: 2px solid #cbd5e1; padding-bottom: 0.3em; font-weight: 900;">$1</h2>')
       .replace(/^# (.*$)/gim, '<h1 style="font-family: inherit; color: #0f172a; margin-top: 2em; margin-bottom: 0.8em; text-align: center; font-weight: 900; font-size: 2.2rem;">$1</h1>')
       .replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, url) => {
-        const finalUrl = sanitizeUrl(overrides.base64Map?.get(url) || url);
+        const finalUrl = sanitizeUrl(overrides.base64Map?.get(url) || '');
         if (!finalUrl) return ''; // Skip failed images
         return `<img src="${finalUrl}" alt="${escapeHtml(alt)}" style="max-height: 400px; width: 100%; object-fit: cover; border-radius: 24px; margin: 2rem 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);" />`;
       })

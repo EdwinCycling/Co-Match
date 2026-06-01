@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { MessageSquare, Mail, Calendar, User, CheckCircle2, Clock, ChevronRight, X, Reply, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import { updateContactRequestStatus } from '../services/adminWriteService';
 
 interface ContactRequest {
   id: string;
@@ -43,7 +44,7 @@ export const AdminContactRequests: React.FC = () => {
 
   const handleStatusChange = async (id: string, newStatus: 'OPEN' | 'REPLIED') => {
     try {
-      await updateDoc(doc(db, 'contact_requests', id), { status: newStatus });
+      await updateContactRequestStatus(id, newStatus);
       setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
       if (selectedRequest?.id === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: newStatus } : null);

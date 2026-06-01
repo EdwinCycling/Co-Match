@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatTime, formatDate } from '../lib/formatters';
@@ -20,6 +20,12 @@ import VideoMeetingBanner from './VideoMeetingBanner';
 import { getExistingMatch } from '../services/matchService';
 import { sendProviderChatMessageEmailNotification } from '../services/smartMatchAlertService';
 import { escapeHtml, sanitizeUrl } from '../lib/sanitize';
+import {
+  sendSeekerAudioMessage,
+  sendSeekerMessage,
+  terminateSeekerChat,
+  toggleFavorite as toggleFavoriteOnServer,
+} from '../services/chatService';
 
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
@@ -163,16 +169,16 @@ export default function MatchReportModal({ report, property, onClose, initialSho
 
     setIsSavingFav(true);
     try {
-      const ref = doc(db, 'seeker_profiles', auth.currentUser.uid);
       if (isFavorited && !forceFav) {
-        await updateDoc(ref, { favorites: arrayRemove(property.id) });
+        await toggleFavoriteOnServer(property.id, false);
         setIsFavorited(false);
       } else {
-        await updateDoc(ref, { favorites: arrayUnion(property.id) });
+        await toggleFavoriteOnServer(property.id, true);
         setIsFavorited(true);
       }
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `seeker_profiles/${auth.currentUser.uid}`);
+      console.error('Error updating favorite:', e);
+      toast.error(e instanceof Error ? e.message : t('common.error_occurred', 'Er is iets misgegaan.'));
     }
     setIsSavingFav(false);
   };
@@ -232,59 +238,11 @@ export default function MatchReportModal({ report, property, onClose, initialSho
     setIsSending(true);
     try {
       const chatId = `${auth.currentUser.uid}_${property.id}`;
-      const chatRef = doc(db, 'chats', chatId);
-      
-      const newMessage = {
-        senderId: auth.currentUser.uid,
-        text: sanitizedText,
-        createdAt: new Date()
-      };
-
-      if (!chatData) {
-        // Check if property is already full
-        const propSnap = await getDoc(doc(db, 'properties', property.id));
-        const propData = propSnap.data();
-        if (propData) {
-           const current = propData.currentInquiries || 0;
-           const max = propData.maxInquiries || 10;
-           if (current >= max) {
-              alert(t('chat.error_property_full', 'Deze woning heeft het maximaal aantal reacties bereikt en is tijdelijk gepauzeerd.'));
-              setIsSending(false);
-              return;
-           }
-        }
-
-        await setDoc(chatRef, {
-          seekerId: auth.currentUser.uid,
-          propertyId: property.id,
-          providerId: property.ownerId,
-          lastSenderId: auth.currentUser.uid,
-          status: 'active',
-          messages: [newMessage],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-
-        // Increment count and auto-pause if needed
-        const currentCount = (property.currentInquiries || 0);
-        const newCount = currentCount + 1;
-        const maxLimit = (property.maxInquiries || 10);
-        
-        await updateDoc(doc(db, 'properties', property.id), {
-          currentInquiries: newCount,
-          status: newCount >= maxLimit ? 'paused' : (property.status || 'available')
-        });
-      } else {
-        await updateDoc(chatRef, {
-          lastSenderId: auth.currentUser.uid,
-          messages: arrayUnion(newMessage),
-          updatedAt: serverTimestamp()
-        });
-      }
+      await sendSeekerMessage(property.id, sanitizedText, !isFavorited);
 
       // Automatically add to favorites
       if (!isFavorited) {
-        await toggleFavorite(true);
+        setIsFavorited(true);
       }
       
       // Send chat message email notification asynchronously, respects settings & 15-minute cooldown
@@ -300,13 +258,13 @@ export default function MatchReportModal({ report, property, onClose, initialSho
 
       setMessage('');
     } catch (e) {
-      handleFirestoreError(e, chatData ? OperationType.UPDATE : OperationType.CREATE, `chats/${auth.currentUser.uid}_${property.id}`);
-      alert(t('chat.error_send'));
+      console.error('Error sending seeker message:', e);
+      alert(e instanceof Error ? e.message : t('chat.error_send'));
     }
     setTimeout(() => setIsSending(false), 300);
   };
 
-  const handleSendAudioMessage = async (base64Audio: string, transcript: string) => {
+  const handleSendAudioMessage = async (base64Audio: string, _transcript: string) => {
     if (!auth.currentUser || isSending) return;
 
     if (chatData && chatData.messages && chatData.messages.length >= 50) {
@@ -329,60 +287,10 @@ export default function MatchReportModal({ report, property, onClose, initialSho
       }
 
       const chatId = `${auth.currentUser.uid}_${property.id}`;
-      const chatRef = doc(db, 'chats', chatId);
-      
-      const newMessage = {
-        senderId: auth.currentUser.uid,
-        text: '[Audio]', // the user requested to only use the transcript for checking before sending, not to store it
-        audioUrl: base64Audio, // Base64 inline audio data
-        hasAudio: true,
-        createdAt: new Date()
-      };
-
-      if (!chatData) {
-        // Check if property is already full
-        const propSnap = await getDoc(doc(db, 'properties', property.id));
-        const propData = propSnap.data();
-        if (propData) {
-           const current = propData.currentInquiries || 0;
-           const max = propData.maxInquiries || 10;
-           if (current >= max) {
-              alert(t('chat.error_property_full', 'Deze woning heeft het maximaal aantal reacties bereikt en is tijdelijk gepauzeerd.'));
-              setIsSending(false);
-              return;
-           }
-        }
-
-        await setDoc(chatRef, {
-          seekerId: auth.currentUser.uid,
-          propertyId: property.id,
-          providerId: property.ownerId,
-          lastSenderId: auth.currentUser.uid,
-          status: 'active',
-          messages: [newMessage],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-
-        // Increment count and auto-pause if needed
-        const currentCount = (property.currentInquiries || 0);
-        const newCount = currentCount + 1;
-        const maxLimit = (property.maxInquiries || 10);
-        
-        await updateDoc(doc(db, 'properties', property.id), {
-          currentInquiries: newCount,
-          status: newCount >= maxLimit ? 'paused' : (property.status || 'available')
-        });
-      } else {
-        await updateDoc(chatRef, {
-          lastSenderId: auth.currentUser.uid,
-          messages: arrayUnion(newMessage),
-          updatedAt: serverTimestamp()
-        });
-      }
+      await sendSeekerAudioMessage(property.id, base64Audio, !isFavorited);
 
       if (!isFavorited) {
-        await toggleFavorite(true);
+        setIsFavorited(true);
       }
       
       // Send chat message email notification asynchronously, respects settings & 15-minute cooldown
@@ -399,7 +307,7 @@ export default function MatchReportModal({ report, property, onClose, initialSho
       setShowAudioRecorder(false);
     } catch (e) {
       console.error("Error sending audio message:", e);
-      alert(t('chat.error_send'));
+      alert(e instanceof Error ? e.message : t('chat.error_send'));
     }
     setTimeout(() => setIsSending(false), 300);
   };
@@ -427,24 +335,33 @@ export default function MatchReportModal({ report, property, onClose, initialSho
   const imageUrlToBase64 = async (url: string): Promise<string> => {
     if (!url) return '';
     if (url.startsWith('data:')) return url;
+    if (url.includes('firebasestorage.googleapis.com')) {
+      return '';
+    }
     try {
       const fetchUrl = url.includes('?') ? `${url}&cb=${Date.now()}` : `${url}?cb=${Date.now()}`;
       const response = await fetch(fetchUrl, { mode: 'cors' });
       const blob = await response.blob();
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => {
+          resolve(reader.result as string);
+        };
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.warn("CORS/Fetch error for PDF image:", url, e);
-      return url;
+      return '';
     }
   };
 
   const getHtmlContent = (overrides: { propertyImageBase64?: string } = {}) => {
-    const propertyImage = sanitizeUrl(overrides.propertyImageBase64 || property.images?.find((img: any) => img.id === property.teaserImageId)?.url || property.images?.[0]?.url);
+    const propertyImageOverride = overrides.propertyImageBase64;
+    const propertyImage = sanitizeUrl(
+      propertyImageOverride !== undefined
+        ? propertyImageOverride
+        : (property.images?.find((img: any) => img.id === property.teaserImageId)?.url || property.images?.[0]?.url)
+    );
 
     let htmlContent = escapeHtml(localReport)
       .replace(/^### (.*$)/gim, '<h3 style="font-family: system-ui, -apple-system, sans-serif; color: #1e293b; margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25em;">$1</h3>')
@@ -598,24 +515,11 @@ export default function MatchReportModal({ report, property, onClose, initialSho
 
     try {
       const chatId = `${auth.currentUser.uid}_${property.id}`;
-      const chatRef = doc(db, 'chats', chatId);
-      const propRef = doc(db, 'properties', property.id);
-
-      // 1. Terminate chat
-      await updateDoc(chatRef, {
-        status: 'terminated',
-        updatedAt: serverTimestamp()
-      });
-
-      // 2. Decrement inquiry count
-      // We also update property status to 'available' if it was automatically paused? 
-      // Maybe not automatically, let the provider decide or maybe yes if it was purely because of max.
-      await updateDoc(propRef, {
-        currentInquiries: Math.max(0, (property.currentInquiries || 1) - 1)
-      });
+      await terminateSeekerChat(chatId);
       
     } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, `chats/${auth.currentUser.uid}_${property.id}`);
+      console.error('Error terminating seeker chat:', e);
+      toast.error(e instanceof Error ? e.message : t('common.error_occurred', 'Er is iets misgegaan.'));
     }
   };
 
@@ -816,10 +720,13 @@ export default function MatchReportModal({ report, property, onClose, initialSho
                    )}
                    {chatData?.messages?.map((msg: any, idx: number) => {
                        if (msg.isSystem) {
+                         const systemText = msg.translationKey
+                           ? t(msg.translationKey, { ...msg.translationParams, defaultValue: msg.text || '' })
+                           : msg.text;
                          return (
                            <div key={idx} className="flex justify-center my-4">
                              <div className="bg-surface-container/50 px-4 py-1.5 rounded-full border border-outline/30">
-                               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{msg.text}</p>
+                               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{systemText}</p>
                              </div>
                            </div>
                          );

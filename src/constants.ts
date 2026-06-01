@@ -1,4 +1,4 @@
-export const APP_VERSION = '260526.1';
+export const APP_VERSION = '1.260101.1';
 export const COPYRIGHT_YEAR = '2026';
 
 export const SUPPORTED_CURRENCIES = [

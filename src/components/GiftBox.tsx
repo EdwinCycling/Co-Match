@@ -43,7 +43,9 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
   const [isExploding, setIsExploding] = useState(false);
   const [particles, setParticles] = useState<SparkParticle[]>([]);
   const [deepLinkedId, setDeepLinkedId] = useState<string | null>(null);
+  const [explosionOrigin, setExplosionOrigin] = useState({ x: 0, y: 0 });
   const autoUnboxChecked = useRef(false);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load user's opened gifts from localStorage
   useEffect(() => {
@@ -155,8 +157,27 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
     };
   }, [gifts, openedIds]);
 
-  // Handle Confetti / Particle creation
+  const resolveExplosionOrigin = () => {
+    const button = triggerButtonRef.current;
+    if (button) {
+      const rect = button.getBoundingClientRect();
+      setExplosionOrigin({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      });
+      return;
+    }
+
+    setExplosionOrigin({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  };
+
+  // Fireworks only for unopened gifts — rendered above the blurred overlay via portal
   const triggerPopAnimation = () => {
+    if (gifts.filter(g => !openedIds.includes(g.id)).length === 0) {
+      return;
+    }
+
+    resolveExplosionOrigin();
     setIsExploding(true);
     
     // Generate 45 neat radiant sparkles
@@ -178,8 +199,12 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
   };
 
   const handleIconClick = () => {
-    triggerPopAnimation();
-    setIsOpen(!isOpen);
+    const willOpen = !isOpen;
+    const hasUnopened = gifts.some(g => !openedIds.includes(g.id));
+    if (willOpen && hasUnopened) {
+      triggerPopAnimation();
+    }
+    setIsOpen(willOpen);
   };
 
   const markAllAsRead = () => {
@@ -246,6 +271,7 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
     <div className="relative flex items-center justify-center">
       {/* Trigger Button */}
       <button
+        ref={triggerButtonRef}
         id="gift-trigger-button"
         onClick={handleIconClick}
         className={`relative p-2.5 rounded-xl transition-all duration-300 focus:outline-none flex items-center justify-center ${
@@ -283,47 +309,57 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
         </AnimatePresence>
       </button>
 
-      {/* Confetti Explosion System */}
-      {isExploding && (
-        <div className="fixed pointer-events-none z-[10000] overflow-visible" style={{
-          left: '50vw',
-          top: '50vh'
-        }}>
-          {particles.map((p) => {
-            const rad = (p.angle * Math.PI) / 180;
-            const targetX = Math.cos(rad) * p.distance;
-            const targetY = Math.sin(rad) * p.distance;
-            
-            return (
-              <motion.div
-                key={p.id}
-                initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-                animate={{
-                  x: targetX,
-                  y: targetY,
-                  scale: [1, 1.2, 0.4],
-                  opacity: [1, 1, 0],
-                  rotate: [0, 180, 360 + Math.random() * 360]
-                }}
-                transition={{
-                  duration: 0.8 + Math.random() * 0.4,
-                  delay: p.delay,
-                  ease: "easeOut"
-                }}
-                className="absolute rounded-full"
-                style={{
-                  width: p.size,
-                  height: p.size,
-                  backgroundColor: p.color,
-                  boxShadow: `0 0 8px ${p.color}`
-                }}
-              />
-            );
-          })}
-        </div>
+      {/* Slideout Frosted Glass Overlay & Panel */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isExploding && (
+            <div
+              key="gift-fireworks"
+              className="fixed pointer-events-none z-[100002] overflow-visible"
+              style={{
+                left: explosionOrigin.x,
+                top: explosionOrigin.y,
+                transform: 'translate(-50%, -50%)',
+              }}
+              aria-hidden
+            >
+              {particles.map((p) => {
+                const rad = (p.angle * Math.PI) / 180;
+                const targetX = Math.cos(rad) * p.distance;
+                const targetY = Math.sin(rad) * p.distance;
+
+                return (
+                  <motion.div
+                    key={p.id}
+                    initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                    animate={{
+                      x: targetX,
+                      y: targetY,
+                      scale: [1, 1.2, 0.4],
+                      opacity: [1, 1, 0],
+                      rotate: [0, 180, 360 + Math.random() * 360],
+                    }}
+                    transition={{
+                      duration: 0.8 + Math.random() * 0.4,
+                      delay: p.delay,
+                      ease: 'easeOut',
+                    }}
+                    className="absolute rounded-full"
+                    style={{
+                      width: p.size,
+                      height: p.size,
+                      backgroundColor: p.color,
+                      boxShadow: `0 0 10px ${p.color}`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
       )}
 
-      {/* Slideout Frosted Glass Overlay & Panel */}
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isOpen && (

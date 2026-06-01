@@ -16,8 +16,36 @@ export async function translateText(text: string, targetLang: string): Promise<s
   }
 
   try {
+    const trimmedText = text.trim();
+    if (!trimmedText) {
+      return text;
+    }
+
+    // #region debug-point C:translate-request-payload
+    fetch("http://127.0.0.1:7777/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "seeker-inspiration-empty",
+        runId: "pre-fix",
+        hypothesisId: "C",
+        location: "translateService.ts:translateText",
+        msg: "[DEBUG] Translate request payload prepared",
+        data: {
+          hasAuthenticatedUser: !!auth.currentUser,
+          originalLength: text.length,
+          trimmedLength: trimmedText.length,
+          targetLang,
+          hasMatchId: false,
+          payloadKeys: ["report", "targetLanguage"],
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
     const response = await postToServerFunction<{ translatedText: string }>('ai-translate-report', {
-      report: text,
+      report: trimmedText,
       targetLanguage: targetLang
     });
     return response.translatedText ? response.translatedText.trim() : text;

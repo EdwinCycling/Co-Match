@@ -6,6 +6,8 @@ import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatDate } from '../lib/formatters';
+import { toast } from 'react-hot-toast';
+import { disableCurrentUserAccount } from '../services/userService';
 
 interface AccountModalProps {
   onClose: () => void;
@@ -14,7 +16,8 @@ interface AccountModalProps {
 export default function AccountModal({ onClose }: AccountModalProps) {
   const { t } = useTranslation();
   const { dateFormat } = useSettings();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [isDisabling, setIsDisabling] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -31,16 +34,19 @@ export default function AccountModal({ onClose }: AccountModalProps) {
     }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDisableAccount = async () => {
     if (!user) return;
+    setIsDisabling(true);
+
     try {
-      await user.delete(); // Note: This might require recent re-authentication in Firebase
+      await disableCurrentUserAccount();
+      toast.success(t('account.disable_success', { defaultValue: 'Je account is gedeactiveerd.' }));
       onClose();
     } catch (error) {
-      console.error('Error deleting account:', error);
-      // Fallback: just sign out if re-auth fails in demo mode
-      await signOut(auth);
-      onClose();
+      console.error('Error disabling account:', error);
+      toast.error(t('account.disable_error', { defaultValue: 'Fout bij deactiveren van je account. Probeer het opnieuw of neem contact op.' }));
+    } finally {
+      setIsDisabling(false);
     }
   };
 
@@ -103,7 +109,7 @@ export default function AccountModal({ onClose }: AccountModalProps) {
             </div>
           </div>
 
-          {!showDeleteConfirm ? (
+          {!showDisableConfirm ? (
             <div className="space-y-3">
               <button
                 onClick={handleLogout}
@@ -114,11 +120,11 @@ export default function AccountModal({ onClose }: AccountModalProps) {
                 {t('account.logout', { defaultValue: 'Uitloggen' })}
               </button>
               <button
-                onClick={() => setShowDeleteConfirm(true)}
+                onClick={() => setShowDisableConfirm(true)}
                 className="w-full flex items-center justify-center gap-2 py-3.5 text-error/80 hover:text-error hover:bg-error/10 font-bold rounded-xl transition-colors"
               >
                 <Trash2 className="w-5 h-5" />
-                {t('account.delete_account', { defaultValue: 'Account verwijderen' })}
+                {t('account.disable_account', { defaultValue: 'Account deactiveren' })}
               </button>
             </div>
           ) : (
@@ -130,21 +136,24 @@ export default function AccountModal({ onClose }: AccountModalProps) {
               <div className="flex items-start gap-3 mb-4">
                 <AlertTriangle className="w-5 h-5 text-error shrink-0 mt-0.5" />
                 <p className="text-sm font-medium text-error leading-relaxed">
-                  {t('account.delete_warning', { defaultValue: 'Weet je zeker dat je jouw account wilt verwijderen? Dit kan niet ongedaan worden gemaakt. Al je gegevens, woningen en credits gaan definitief verloren.' })}
+                  {t('account.disable_warning', { defaultValue: 'Weet je zeker dat je jouw account wilt deactiveren? Je woningen worden op inactief gezet en lopende chats krijgen een systeembericht. Je toegang tot de applicatie wordt direct geblokkeerd.' })}
                 </p>
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => setShowDisableConfirm(false)}
                   className="flex-1 py-2.5 bg-white text-on-surface font-bold rounded-xl border border-outline hover:bg-surface-container transition-colors text-sm"
                 >
                   {t('common.cancel', { defaultValue: 'Annuleren' })}
                 </button>
                 <button
-                  onClick={handleDeleteAccount}
+                  onClick={handleDisableAccount}
+                  disabled={isDisabling}
                   className="flex-1 py-2.5 bg-error text-white font-bold rounded-xl hover:bg-error/90 transition-colors text-sm"
                 >
-                  {t('account.confirm_delete', { defaultValue: 'Verwijder definitief' })}
+                  {isDisabling
+                    ? t('account.disabling', { defaultValue: 'Bezig met deactiveren...' })
+                    : t('account.confirm_disable', { defaultValue: 'Deactiveer account' })}
                 </button>
               </div>
             </motion.div>

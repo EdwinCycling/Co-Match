@@ -32,7 +32,9 @@ export default function PWAInstallPrompt({ user, userRole }: PWAInstallPromptPro
       setDeferredPrompt(e);
     };
 
-    const triggerHandler = () => setShowPrompt(true);
+    const triggerHandler = () => {
+      setShowPrompt(true);
+    };
     
     // Listen for tab clicks (seeker)
     const tabClickHandler = () => {

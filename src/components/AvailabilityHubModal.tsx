@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Calendar as CalendarIcon, Info, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
+import { batchUpdatePropertyAvailability, updatePropertyAvailability } from '../services/propertyService';
 
 interface Property {
   id: string;
@@ -98,11 +97,8 @@ export default function AvailabilityHubModal({ isOpen, onClose, properties, onPr
     setLocalProperties(prev => prev.map(p => p.id === propertyId ? { ...p, monthlyAvailability: newAvail } : p));
     
     try {
-      await updateDoc(doc(db, 'properties', propertyId), {
-        monthlyAvailability: newAvail
-      });
-      // Optionally notify parent after successful update
-      // onPropertiesUpdated(); 
+      await updatePropertyAvailability(propertyId, monthKey, newStatus);
+      onPropertiesUpdated();
     } catch (error) {
       console.error("Error updating availability", error);
       toast.error(t('dash.error_generic', 'Er is een fout opgetreden.'));
@@ -131,17 +127,9 @@ export default function AvailabilityHubModal({ isOpen, onClose, properties, onPr
       });
       setLocalProperties(updatedProps);
       
-      const updates = filteredProperties.map(async (property) => {
-        const currentAvail = property.monthlyAvailability || {};
-        const newAvail = { ...currentAvail, [monthKey]: newStatus };
-        return updateDoc(doc(db, 'properties', property.id), {
-          monthlyAvailability: newAvail
-        });
-      });
-      
-      await Promise.all(updates);
+      await batchUpdatePropertyAvailability(filteredProperties.map(property => property.id), monthKey, newStatus);
       toast.success(t('availability.batch_saved', 'Status voor alle woningen in deze maand bijgewerkt'));
-      // onPropertiesUpdated();
+      onPropertiesUpdated();
     } catch (error) {
       console.error("Error updating batch availability", error);
       toast.error(t('dash.error_generic', 'Er is een fout opgetreden.'));
@@ -293,7 +281,7 @@ export default function AvailabilityHubModal({ isOpen, onClose, properties, onPr
                             ? 'bg-success/10 text-success border-success/20' 
                             : 'bg-error/10 text-error border-error/20'
                         }`}>
-                          {property.status === 'available' ? 'Actief' : 'Gepauzeerd'}
+                          {property.status === 'available' ? t('status.active', 'Active') : t('status.paused', 'Paused')}
                         </div>
                       </div>
                     </div>

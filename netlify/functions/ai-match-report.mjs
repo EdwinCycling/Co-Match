@@ -1,4 +1,4 @@
-import { createGeminiClient, ensurePost, getDb, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, enforceRateLimit, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -9,6 +9,13 @@ export const handler = async (event) => {
 
   return withErrorHandling(async () => {
     const user = await requireUser(event);
+    await enforceRateLimit({
+      scope: 'ai-match-report',
+      identifier: user.uid,
+      maxRequests: 5,
+      windowMs: 10 * 60 * 1000,
+      errorMessage: 'Error: Too many AI match report requests. Please try again in a few minutes.',
+    });
     const { seekerId, propertyId, language = 'nl' } = parseBody(event);
 
     if (!seekerId || seekerId !== user.uid) {
@@ -20,6 +27,17 @@ export const handler = async (event) => {
     }
 
     const db = getDb();
+    const matchId = `${seekerId}_${propertyId}`;
+    const existingMatchSnap = await db.collection('matches').doc(matchId).get();
+    if (existingMatchSnap.exists) {
+      return json(200, {
+        match: {
+          id: existingMatchSnap.id,
+          ...existingMatchSnap.data(),
+        },
+      });
+    }
+
     const [aiSettingsSnap, seekerSnap, propertySnap] = await Promise.all([
       db.collection('ai_settings').doc('matching').get(),
       db.collection('seeker_profiles').doc(seekerId).get(),
@@ -105,8 +123,27 @@ ${JSON.stringify(seekerData, null, 2)}
       },
     });
 
+    const reportText = response.text || 'Er kon geen rapport worden gegenereerd.';
+    const matchData = {
+      seekerId,
+      propertyId,
+      providerId: propertyData.ownerId || '',
+      report: reportText,
+      language,
+      createdAt: serverTimestamp(),
+    };
+
+    await db.collection('matches').doc(matchId).set(matchData, { merge: true });
+
     return json(200, {
-      report: response.text || 'Er kon geen rapport worden gegenereerd.',
+      match: {
+        id: matchId,
+        seekerId,
+        propertyId,
+        providerId: propertyData.ownerId || '',
+        report: reportText,
+        language,
+      },
     });
   });
 };

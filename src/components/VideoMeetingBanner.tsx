@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Calendar, Clock, Video, Check, X, Mic, ShieldCheck } from 'lucide-react';
-import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'motion/react';
+import { respondToMeeting } from '../services/chatService';
 
 function HardwareTestModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -110,32 +110,20 @@ export default function VideoMeetingBanner({ chat, isSeeker }: VideoMeetingBanne
 
   const handleAction = async (action: 'accept' | 'decline' | 'repropose') => {
     try {
-      const chatRef = doc(db, 'chats', chat.id);
-      
       if (action === 'accept') {
-        await updateDoc(chatRef, {
-          'meta.meeting.status': 'accepted',
-          messages: arrayUnion({
-            senderId: 'system',
-            isSystem: true,
-            text: t('meeting.accepted_msg', `Videogesprek geaccepteerd! Gepland voor {{date}}. Je kunt nu een Google Meet link aanmaken en delen in deze chat.`, { date: meetingDate.toLocaleString(localeStr, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }),
-            createdAt: new Date(),
-          }),
-          updatedAt: serverTimestamp()
-        });
+        await respondToMeeting(
+          chat.id,
+          'accept',
+          t('meeting.accepted_msg', `Videogesprek geaccepteerd! Gepland voor {{date}}. Je kunt nu een Google Meet link aanmaken en delen in deze chat.`, { date: meetingDate.toLocaleString(localeStr, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) })
+        );
         toast.success(t('meeting.accepted_success', "Videogesprek geaccepteerd!"));
       } 
       else if (action === 'decline') {
-        await updateDoc(chatRef, {
-          'meta.meeting': null,
-          messages: arrayUnion({
-            senderId: 'system',
-            isSystem: true,
-            text: t('meeting.declined_msg', `Videogesprek voorstel geweigerd.`),
-            createdAt: new Date(),
-          }),
-          updatedAt: serverTimestamp()
-        });
+        await respondToMeeting(
+          chat.id,
+          'decline',
+          t('meeting.declined_msg', `Videogesprek voorstel geweigerd.`)
+        );
         toast.success(t('meeting.declined_success', "Videogesprek geweigerd."));
       }
       else if (action === 'repropose') {
@@ -148,19 +136,12 @@ export default function VideoMeetingBanner({ chat, isSeeker }: VideoMeetingBanne
         
         const newDate = new Date(pickedDate);
 
-        await updateDoc(chatRef, {
-          'meta.meeting.status': 'proposed',
-          'meta.meeting.scheduledAt': newDate,
-          'meta.meeting.proposerId': auth.currentUser?.uid,
-          'meta.meeting.round': round,
-          messages: arrayUnion({
-            senderId: 'system',
-            isSystem: true,
-            text: t('meeting.new_time_msg', `Nieuwe tijd voor videogesprek voorgesteld: {{date}}.`, { date: newDate.toLocaleString(localeStr, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }),
-            createdAt: new Date(),
-          }),
-          updatedAt: serverTimestamp()
-        });
+        await respondToMeeting(
+          chat.id,
+          'repropose',
+          t('meeting.new_time_msg', `Nieuwe tijd voor videogesprek voorgesteld: {{date}}.`, { date: newDate.toLocaleString(localeStr, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }),
+          newDate.toISOString()
+        );
         setShowDatePicker(false);
         toast.success(t('meeting.new_time_success', "Nieuwe tijd voorgesteld."));
       }

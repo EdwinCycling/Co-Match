@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { X, MessageSquare, ShieldAlert, ShieldCheck, CheckCheck, Check, FileText, User, Play, Mic, ArrowUpDown, Filter, Clock, Calendar, ChevronLeft, ChevronRight, Maximize2, Minimize2, Send, AlertCircle, Linkedin, ExternalLink, Info, Video, Sparkles, Ban, ArrowLeft } from 'lucide-react';
-import { collection, query, where, onSnapshot, doc, getDoc, updateDoc, arrayUnion, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useSettings } from '../contexts/SettingsContext';
 import { useCurrencyConverter } from '../hooks/useCurrencyConverter';
@@ -11,10 +11,20 @@ import { getExistingMatch, translateMatchReport } from '../services/matchService
 import ReactMarkdown from 'react-markdown';
 import { MeetingPlaceSuggester } from './MeetingPlaceSuggester';
 import { ExpertHub } from './ExpertHub';
-import MatchReportModal from './MatchReportModal';
 import { toast } from 'react-hot-toast';
 import VideoMeetingBanner from './VideoMeetingBanner';
 import { sendChatMessageEmailNotification } from '../services/smartMatchAlertService';
+import { fetchPublicProfileCard } from '../lib/publicProfile';
+import {
+  blockChat,
+  markChatRead,
+  proposeMeeting,
+  sendProviderMessage,
+  terminateChat,
+  toggleLinkedInChatShare,
+} from '../services/chatService';
+
+const MatchReportModal = lazy(() => import('./MatchReportModal'));
 
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
@@ -128,21 +138,33 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
       }
 
       // Fetch newly seen seekers
-      const newSeekerIds = chatsData.map((c: any) => c.seekerId).filter((id: string) => !seekers[id]);
+      const newSeekerIds = chatsData.map((c: any) => c.seekerId).filter((id: string) => id && !seekers[id]);
       if (newSeekerIds.length > 0) {
         const newSeekers = { ...seekers };
-        for (const sId of newSeekerIds) {
-          const sSnap = await getDoc(doc(db, 'seeker_profiles', sId));
-          if (sSnap.exists()) {
-            newSeekers[sId] = sSnap.data();
-          } else {
-            // fallback
-            newSeekers[sId] = { nickname: 'Onbekend' };
-          }
-        }
+        await Promise.all(
+          newSeekerIds.map(async (sId: string) => {
+            const card = await fetchPublicProfileCard(db, sId, {
+              fallbackRole: 'seeker',
+              seekerFallback: t('chat.candidate', 'Kandidaat'),
+            });
+            if (card) {
+              newSeekers[sId] = {
+                firstName: card.firstName,
+                nickname: card.displayName,
+                photo_url: card.photoUrl,
+                photoURL: card.photoUrl,
+                verificationLevel: card.verificationLevel,
+              };
+            } else {
+              newSeekers[sId] = { nickname: t('chat.candidate', 'Kandidaat') };
+            }
+          })
+        );
         setSeekers(newSeekers);
       }
-    }, (error) => handleFirestoreError(error, OperationType.GET, 'chats'));
+    }, (error) => {
+      console.error('Provider chats listener error:', error);
+    });
 
     return () => unsubscribe();
   }, [property]);
@@ -183,9 +205,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
       });
 
       if (needsUpdate) {
-        updateDoc(doc(db, 'chats', selectedChat.id), {
-          messages: updatedMessages
-        }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `chats/${selectedChat.id}`));
+        markChatRead(selectedChat.id).catch(err => console.warn('markChatRead failed:', err));
       }
     }
   }, [selectedChat?.messages]);
@@ -223,16 +243,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     }
 
     try {
-      await updateDoc(doc(db, 'chats', selectedChat.id), {
-        lastSenderId: auth.currentUser.uid,
-        messages: arrayUnion({
-          senderId: auth.currentUser.uid,
-          text: textToSend,
-          createdAt: new Date(),
-          read: false
-        }),
-        updatedAt: serverTimestamp()
-      });
+      await sendProviderMessage(selectedChat.id, textToSend);
       setMessage('');
       
       // Send chat message email notification asynchronously, respects settings & 15-minute cooldown
@@ -248,7 +259,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
 
     } catch (e) {
       console.error(e);
-      handleFirestoreError(e, OperationType.UPDATE, `chats/${selectedChat.id}`);
+      toast.error(t('chat.send_failed', 'Bericht kon niet worden verzonden. Probeer het opnieuw.'));
     }
     setIsSending(false);
   };
@@ -259,9 +270,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     if (!confirmBlock) return;
 
     try {
-      await updateDoc(doc(db, 'chats', selectedChat.id), {
-        status: 'blocked'
-      });
+      await blockChat(selectedChat.id);
       // automatically deselect since it will disappear
       setSelectedChat(null);
     } catch (e) {
@@ -275,12 +284,8 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     const isShared = selectedChat.meta?.isLinkedInShared;
     
     try {
-      const chatRef = doc(db, 'chats', selectedChat.id);
       if (isShared) {
-        await updateDoc(chatRef, {
-          'meta.isLinkedInShared': false,
-          'meta.linkedInUrl': null
-        });
+        await toggleLinkedInChatShare(selectedChat.id, false);
         toast.success(t('chat.linkedin_unshared', 'LinkedIn delen gestopt'));
       } else {
         if (!providerLinkedIn) {
@@ -288,17 +293,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
           return;
         }
         
-        await updateDoc(chatRef, {
-          'meta.isLinkedInShared': true,
-          'meta.linkedInUrl': providerLinkedIn,
-          'meta.sharedAt': serverTimestamp(),
-          messages: arrayUnion({
-            senderId: 'system',
-            text: `De aanbieder heeft zijn/haar LinkedIn profiel gedeeld.`,
-            createdAt: new Date(),
-            isSystem: true
-          })
-        });
+        await toggleLinkedInChatShare(selectedChat.id, true, providerLinkedIn);
         toast.success(t('chat.linkedin_shared_success', 'LinkedIn succesvol gedeeld in de chat!'));
       }
     } catch (e) {
@@ -320,23 +315,10 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     }
 
     try {
-      const chatRef = doc(db, 'chats', chat.id);
-      const propRef = doc(db, 'properties', property.id);
-
-      await updateDoc(chatRef, {
-        status: 'terminated',
-        updatedAt: serverTimestamp(),
-        messages: arrayUnion({
-          senderId: 'system',
-          text: t('chat.provider_ended', `Dit gesprek is beëindigd door de aanbieder. Je kunt niet meer reageren.`),
-          createdAt: new Date(),
-          isSystem: true
-        })
-      });
-
-      await updateDoc(propRef, {
-        currentInquiries: Math.max(0, (property.currentInquiries || 1) - 1)
-      });
+      await terminateChat(
+        chat.id,
+        t('chat.provider_ended', `Dit gesprek is beëindigd door de aanbieder. Je kunt niet meer reageren.`)
+      );
       
       toast.success(t('chat.terminated_success', 'Gesprek succesvol beëindigd.'));
     } catch (e) {
@@ -422,21 +404,11 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     }
     
     try {
-      await updateDoc(doc(db, 'chats', selectedChat.id), {
-        'meta.meeting': {
-           status: 'proposed',
-           scheduledAt: parsedDate,
-           proposerId: auth.currentUser.uid,
-           round: 1
-        },
-        messages: arrayUnion({
-          senderId: 'system',
-          isSystem: true,
-          text: t('chat.meeting_proposed_for', `Videogesprek voorgesteld voor {{date}}.`, { date: parsedDate.toLocaleString('nl-NL') }),
-          createdAt: new Date(),
-        }),
-        updatedAt: serverTimestamp()
-      });
+      await proposeMeeting(
+        selectedChat.id,
+        parsedDate.toISOString(),
+        t('chat.meeting_proposed_for', `Videogesprek voorgesteld voor {{date}}.`, { date: parsedDate.toLocaleString('nl-NL') })
+      );
       toast.success(t('chat.meeting_proposed_success', "Videogesprek voorgesteld."));
       setShowDatePickerForMeeting(false);
       setPickedMeetingDate('');
@@ -840,10 +812,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
 
                  {selectedChat.messages?.map((msg: any, idx: number) => {
                      if (msg.isSystem) {
+                       const systemText = msg.translationKey
+                         ? t(msg.translationKey, { ...msg.translationParams, defaultValue: msg.text || '' })
+                         : msg.text;
                        return (
                          <div key={idx} className="flex justify-center my-4">
                            <div className="bg-surface-container-high/50 px-4 py-1.5 rounded-full border border-outline/30">
-                             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{msg.text}</p>
+                             <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{systemText}</p>
                            </div>
                          </div>
                        );
@@ -1021,13 +996,15 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
           )}
 
           {showReport && (
-            <MatchReportModal 
-              report={showReport}
-              property={property}
-              onClose={() => setShowReport(null)}
-              seekerId={selectedChat?.seekerId}
-              initialShowContact={false}
-            />
+            <Suspense fallback={null}>
+              <MatchReportModal 
+                report={showReport}
+                property={property}
+                onClose={() => setShowReport(null)}
+                seekerId={selectedChat?.seekerId}
+                initialShowContact={false}
+              />
+            </Suspense>
           )}
 
           {showProfile && (

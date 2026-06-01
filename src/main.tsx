@@ -1,12 +1,9 @@
-console.log("=== [DEBUG] main.tsx start loading ===");
-
 import {StrictMode, Component, ReactNode, Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
+import './i18n';
 import App from './App.tsx';
 import { SettingsProvider } from './contexts/SettingsContext';
 import './index.css';
-
-console.log("=== [DEBUG] main.tsx imports completed ===");
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
   constructor(props: {children: ReactNode}) {
@@ -14,11 +11,9 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
     this.state = { hasError: false, error: null };
   }
   static getDerivedStateFromError(error: Error) {
-    console.error("=== [DEBUG] ErrorBoundary caught error ===", error);
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error("=== [DEBUG] ErrorBoundary componentDidCatch ===", error, errorInfo);
   }
   render() {
     if (this.state.hasError) {
@@ -34,12 +29,9 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
   }
 }
 
-console.log("=== [DEBUG] Attempting to createRoot and render ===");
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   console.error("=== [DEBUG] Element with id 'root' NOT found in document! ===");
-} else {
-  console.log("=== [DEBUG] Found rootElement, rendering React tree ===");
 }
 
 createRoot(rootElement!).render(
@@ -53,5 +45,3 @@ createRoot(rootElement!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
-
-console.log("=== [DEBUG] main.tsx createRoot.render executed ===");

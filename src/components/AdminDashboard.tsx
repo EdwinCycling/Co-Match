@@ -19,10 +19,28 @@ import AdminGiftsDashboard from './AdminGiftsDashboard';
 import AdminNewsletterStudio from './AdminNewsletterStudio';
 import AdminSmartMatchAlert from './AdminSmartMatchAlert';
 import { collection, query, getDocs, updateDoc, doc, deleteDoc, orderBy, Timestamp, serverTimestamp, getDoc, setDoc, addDoc, writeBatch, where, getCountFromServer, onSnapshot, limit, startAfter } from 'firebase/firestore';
+import {
+  addAdminUserCredits,
+  bulkAddAdminUserCredits,
+  clearAdminProperties,
+  createAdminMockProperties,
+  deleteAdminMessage,
+  deleteAdminProperty,
+  removeAdminPropertyPhoto,
+  saveAdminAiSettings,
+  saveAdminMessage,
+  saveAdminStopConfig,
+  setAdminUserSuspension,
+  setAdminVerificationDecision,
+  toggleAdminPropertyStatus,
+  toggleAdminUserStatus,
+  updateAdminProperty,
+} from '../services/adminWriteService';
 
 import { PropertyEditor, Property, PropertyImage } from './ProviderDashboard';
 import { useCurrencyConverter } from '../hooks/useCurrencyConverter';
 import { formatDate as globalFormatDate } from '../lib/formatters';
+
 
 const DEFAULT_ROLE_INSTRUCTION = `Jouw Rol:
 Je bent de matchmaker en 'Digitale Cohousing Coach' van de app. Je leest de Woon-DNA data, maar je communiceert absoluut niet als een AI of een data-analist. Je klinkt als een echte, doorgewinterde wooncoach van vlees en bloed. Je schrijft zoals je praat: vloeiend, soms een beetje rommelig, maar altijd raak en met oprechte betrokkenheid.
@@ -174,10 +192,7 @@ const UserDetailModal: React.FC<{
 
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'users', user.id), {
-        isSuspended: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      await toggleAdminUserStatus(user.id, newStatus);
       toast.success(newStatus ? "Account op non-actief gezet" : "Account geactiveerd");
       onUpdate();
       onClose();
@@ -193,10 +208,7 @@ const UserDetailModal: React.FC<{
     setLoading(true);
     try {
       const currentCredits = user.credits || 0;
-      await updateDoc(doc(db, 'users', user.id), {
-        credits: currentCredits + creditAmount,
-        updatedAt: serverTimestamp()
-      });
+      await addAdminUserCredits(user.id, creditAmount);
       toast.success(`${creditAmount} credits toegevoegd aan ${user.displayName || user.email}`);
       onUpdate();
       // Optionally update local user object if we don't want to close the modal
@@ -405,6 +417,7 @@ export default function AdminDashboard() {
     }
   };
   const [activeTab, setActiveTab] = useState<'overview' | 'properties' | 'photo_moderation' | 'users' | 'ai' | 'currencies' | 'experts' | 'verifications' | 'contact' | 'messaging' | 'gifts' | 'newsletter' | 'smart_match'>('overview');
+
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [properties, setProperties] = useState<Property[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -493,24 +506,19 @@ export default function AdminDashboard() {
     }
 
     try {
-      const msgData = {
+      await saveAdminMessage({
+        messageId: editingMsg?.id,
         text: msgText,
         targetAudience: msgTarget,
         type: msgType,
         startDate: msgStart,
         endDate: msgEnd || null,
         isDisabled: msgIsDisabled,
-        updatedAt: serverTimestamp(),
-      };
+      });
 
       if (editingMsg) {
-        await updateDoc(doc(db, 'admin_messages', editingMsg.id), msgData);
         toast.success("Bericht succesvol bijgewerkt!");
       } else {
-        await addDoc(collection(db, 'admin_messages'), {
-          ...msgData,
-          createdAt: serverTimestamp(),
-        });
         toast.success("Bericht succesvol toegevoegd!");
       }
 
@@ -544,7 +552,7 @@ export default function AdminDashboard() {
 
   const handleDeleteMessage = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'admin_messages', id));
+      await deleteAdminMessage(id);
       toast.success("Bericht is succesvol en definitief verwijderd!");
       setDeleteConfirmMsg(null);
     } catch (e) {
@@ -557,10 +565,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setStopSaving(true);
     try {
-      await setDoc(doc(db, 'settings', 'app_stop'), {
-        ...stopConfig,
-        updatedAt: serverTimestamp(),
-      });
+      await saveAdminStopConfig(stopConfig);
       toast.success("Applicatie-stop configuratie opgeslagen!");
     } catch (e) {
       console.error("Error saving stop config:", e);
@@ -709,17 +714,7 @@ export default function AdminDashboard() {
     if (selectedUserIds.length === 0) return;
     setBulkLoading(true);
     try {
-      const batch = writeBatch(db);
-      for (const userId of selectedUserIds) {
-        const userRef = doc(db, 'users', userId);
-        const userSnap = await getDoc(userRef);
-        const currentCredits = (userSnap.data()?.credits || 0);
-        batch.update(userRef, {
-          credits: currentCredits + bulkCreditAmount,
-          updatedAt: serverTimestamp()
-        });
-      }
-      await batch.commit();
+      await bulkAddAdminUserCredits(selectedUserIds, bulkCreditAmount);
       toast.success(`${bulkCreditAmount} credits toegevoegd aan ${selectedUserIds.length} gebruikers`);
       setSelectedUserIds([]);
       fetchUsers();
@@ -743,12 +738,13 @@ export default function AdminDashboard() {
       }
       
       try {
-        console.log("Checking admin status for:", auth.currentUser.uid, auth.currentUser.email);
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        const userSnap = await getDoc(userRef);
-        
-        const isAdminUser = (userSnap.exists() && userSnap.data()?.role === 'admin') || 
-                           auth.currentUser.email === 'edwin@editsolutions.nl';
+        console.log("Checking admin status for:", auth.currentUser.uid);
+        const tokenResult = await auth.currentUser.getIdTokenResult();
+        const claims = tokenResult.claims || {};
+        const isAdminUser =
+          claims.admin === true ||
+          claims.role === 'admin' ||
+          (Array.isArray(claims.roles) && claims.roles.includes('admin'));
         
         console.log("Is Admin:", isAdminUser);
         if (isAdminUser) {
@@ -1019,9 +1015,9 @@ export default function AdminDashboard() {
        inactive: properties.filter(p => !p.isActive).length
      };
      return [
-       { name: t('admin.stats.active_props', 'Actieve Woningen'), count: statusCount.active, fill: '#10b981' },
-       { name: 'Gepauzeerd', count: statusCount.paused, fill: '#f59e0b' },
-       { name: 'Inactief / Overig', count: statusCount.inactive, fill: '#ef4444' }
+       { name: t('admin.status.active', 'Active'), count: statusCount.active, fill: '#10b981' },
+       { name: t('admin.status.paused', 'Paused'), count: statusCount.paused, fill: '#f59e0b' },
+       { name: t('admin.status.inactive', 'Draft/Inactive'), count: statusCount.inactive, fill: '#ef4444' }
      ];
   }, [properties]);
 
@@ -1187,10 +1183,7 @@ export default function AdminDashboard() {
   const handleSaveAiSettings = async () => {
     setAiSaveLoading(true);
     try {
-      await setDoc(doc(db, 'ai_settings', 'matching'), {
-        ...aiSettings,
-        updatedAt: serverTimestamp()
-      });
+      await saveAdminAiSettings(aiSettings);
       toast.success('AI Instellingen opgeslagen!');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'ai_settings/matching');
@@ -1356,7 +1349,7 @@ export default function AdminDashboard() {
               updateData.teaserImageId = updatedImages.length > 0 ? updatedImages[0].id : '';
             }
             
-            await updateDoc(propRef, updateData);
+            await removeAdminPropertyPhoto(propertyId, photoId);
             toast.success("Foto succesvol verwijderd!");
             
             setProperties(prev => prev.map(p => {
@@ -1398,32 +1391,7 @@ export default function AdminDashboard() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await updateDoc(doc(db, 'users', userId), {
-            isSuspended: newSuspended,
-            updatedAt: serverTimestamp()
-          });
-
-          const ownerProperties = properties.filter(p => p.ownerId === userId);
-          
-          const batch = writeBatch(db);
-          ownerProperties.forEach(p => {
-            const propRef = doc(db, 'properties', p.id);
-            batch.update(propRef, {
-              ownerSuspended: newSuspended,
-              updatedAt: serverTimestamp()
-            });
-          });
-          
-          try {
-            await updateDoc(doc(db, 'providers', userId), {
-              isSuspended: newSuspended,
-              updatedAt: serverTimestamp()
-            });
-          } catch (err) {
-            // Enkel loggen
-          }
-
-          await batch.commit();
+          await setAdminUserSuspension(userId, newSuspended);
 
           toast.success(newSuspended ? "Gebruiker met succes gedeactiveerd!" : "Gebruiker met succes geactiveerd!");
 
@@ -1467,106 +1435,7 @@ export default function AdminDashboard() {
   const executeMockProperties = async () => {
     setSaveLoading(true);
     try {
-      const cities = [
-        { city: "Antwerpen", lat: 51.2194, lng: 4.4025, neighborhoods: ["Zuid", "Noord", "Berchem", "Zurenborg", "Eilandje"] },
-        { city: "Gent", lat: 51.0500, lng: 3.7303, neighborhoods: ["Sint-Amandsberg", "Brugse Poort", "Rabot", "Ledeberg", "Centrum"] },
-        { city: "Brussel", lat: 50.8503, lng: 4.3517, neighborhoods: ["Elsene", "Etterbeek", "Sint-Gillis", "Schaarbeek", "Laken"] },
-        { city: "Leuven", lat: 50.8798, lng: 4.7005, neighborhoods: ["Centrum", "Heverlee", "Kessel-Lo", "Wilsele"] }
-      ];
-
-      const goals = ["Huis delen", "Samen huurcontract", "Kamer", "Kangoeroewonen", "Student"];
-      const adjs = ["Prachtige", "Gezellige", "Ruime", "Lichte", "Moderne", "Karaktervolle", "Hippe", "Duurzame"];
-      const types = ["Kamer", "Studio", "Appartement", "Huis", "Loft"];
-      
-      const unsplashImages = [
-        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=800",
-        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&q=80&w=800"
-      ];
-
-      const batch = writeBatch(db);
-
-      for (let i = 0; i < 100; i++) {
-        const cityData = cities[Math.floor(Math.random() * cities.length)];
-        const neighborhood = cityData.neighborhoods[Math.floor(Math.random() * cityData.neighborhoods.length)];
-        const lat = cityData.lat + (Math.random() - 0.5) * 0.05;
-        const lng = cityData.lng + (Math.random() - 0.5) * 0.05;
-        
-        const type = types[Math.floor(Math.random() * types.length)];
-        const adj = adjs[Math.floor(Math.random() * adjs.length)];
-        const title = `${adj} ${type.toLowerCase()} in ${neighborhood}`;
-        const price = Math.floor(Math.random() * 1000) + 450;
-
-        const goalOptions = ["cohousing", "hospita", "vakantie_onderhuur", "huisbewaring_expat", "vrije_verhuur"];
-        const typeOptions = ["kamer", "studio", "appartement", "woning"];
-        const domicileOptions = ["ja", "nee", "overleg", "weet_ik_niet"];
-
-        const features = {
-          goal: goalOptions[Math.floor(Math.random() * goalOptions.length)],
-          type: typeOptions[Math.floor(Math.random() * typeOptions.length)],
-          domicile: domicileOptions[Math.floor(Math.random() * domicileOptions.length)],
-          bedrooms: Math.floor(Math.random() * 4) + 1,
-          bathrooms: Math.floor(Math.random() * 2) + 1,
-          area_private: Math.floor(Math.random() * 60) + 12,
-          area_shared: Math.floor(Math.random() * 120) + 20,
-          furnished: Math.random() > 0.5 ? "volledig" : "deels",
-          energy_label: ["A", "B", "C", "D"][Math.floor(Math.random() * 4)],
-          outdoor_space: Math.random() > 0.3 ? (Math.random() > 0.5 ? "tuin" : "balkon") : "geen",
-          free_text_description: `Welkom in deze ${title.toLowerCase()}. Fantastische locatie, veel lichtinval. Ideaal voor een leuke huisgenoot. Voorzien van alle gemakken waaronder internet, een eigen keuken en badkamer. We zoeken een gezellig iemand die van ${Math.random() > 0.5 ? 'yoga en vegan eten' : 'gezellig samen eten'} houdt. ${Math.random() > 0.5 ? 'Met groot balkon' : 'Met zonnige tuin'}.`,
-          available_from: new Date(Date.now() + Math.random() * 90 * 86400000).toISOString().split('T')[0],
-          min_stay: Math.floor(Math.random() * 6) + 1,
-          max_stay: Math.random() > 0.6 ? Math.floor(Math.random() * 20) + 6 : "",
-          is_indefinite: Math.random() > 0.4,
-          // DNA Scores (Base data for 100% completion)
-          dna_social: Math.floor(Math.random() * 4) + 1,
-          dna_clean: Math.floor(Math.random() * 4) + 1,
-          dna_quiet: Math.floor(Math.random() * 4) + 1,
-          dna_sustainable: Math.floor(Math.random() * 4) + 1
-        };
-
-        // Select 3 random images
-        const shuffledImages = [...unsplashImages].sort(() => 0.5 - Math.random());
-        const selectedImageUrls = shuffledImages.slice(0, 3);
-        
-        const propertyImages: PropertyImage[] = selectedImageUrls.map((url, idx) => ({
-          id: `img-${i}-${idx}-${Math.random().toString(36).substr(2, 5)}`,
-          url,
-          category: idx === 0 ? 'exterior' : (idx === 1 ? 'living' : 'bedroom'),
-          description: idx === 0 ? 'Buitenkant' : (idx === 1 ? 'Woonkamer' : 'Slaapkamer')
-        }));
-
-        const newDocRef = doc(collection(db, 'properties'));
-        batch.set(newDocRef, {
-          ownerId: auth.currentUser?.uid,
-          title,
-          price,
-          location: `${cityData.city}, ${neighborhood}`,
-          city: cityData.city,
-          address: `Randomstraat ${Math.floor(Math.random()*100)+1}, ${cityData.city}`,
-          neighborhood,
-          displayLat: lat,
-          displayLng: lng,
-          displayRadius: 500,
-          status: 'available',
-          completion: 100,
-          isActive: true,
-          features,
-          priceType: 'fixed',
-          minPrice: price,
-          maxPrice: price,
-          images: propertyImages,
-          teaserImageId: propertyImages[0].id,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
-      
-      await batch.commit();
+      await createAdminMockProperties();
       toast.success('100 woningen succesvol aangemaakt!');
       fetchProperties();
     } catch (e: any) {
@@ -1603,11 +1472,7 @@ export default function AdminDashboard() {
     try {
       const q = collection(db, 'properties');
       const snap = await getDocs(q);
-      const batch = writeBatch(db);
-      snap.docs.forEach(d => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
+      await clearAdminProperties();
       toast.success(`Succesvol ${snap.docs.length} woningen verwijderd!`);
       fetchProperties();
     } catch (e: any) {
@@ -1646,10 +1511,7 @@ export default function AdminDashboard() {
     setSaveLoading(true);
     try {
       const { id, ...data } = editingProp;
-      await updateDoc(doc(db, 'properties', id), {
-        ...data,
-        updatedAt: serverTimestamp()
-      });
+      await updateAdminProperty(id, data as Record<string, unknown>);
       setProperties(prev => prev.map(p => p.id === id ? editingProp : p));
       setEditingProp(null);
     } catch (error) {
@@ -1661,7 +1523,7 @@ export default function AdminDashboard() {
   const togglePropertyStatus = async (id: string, currentStatus: boolean | undefined, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening edit modal
     try {
-      await updateDoc(doc(db, 'properties', id), { isActive: !currentStatus });
+      await toggleAdminPropertyStatus(id, !currentStatus);
       setProperties(prev => prev.map(p => p.id === id ? { ...p, isActive: !currentStatus } : p));
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `properties/${id}`);
@@ -1678,16 +1540,11 @@ export default function AdminDashboard() {
                toast.dismiss(toastObj.id);
                setSaveLoading(true);
                try {
-                 const { getDocs, query, collection, where, limit } = await import('firebase/firestore');
-                 const q = query(collection(db, 'matches'), where('propertyId', '==', id), limit(1));
-                 const matchesSnap = await getDocs(q);
-                 
-                 if (!matchesSnap.empty) {
+                 const result = await deleteAdminProperty(id);
+                 if (result.deleted === false) {
                    toast.error("Kan woning niet verwijderen omdat deze gekoppeld is aan actieve zoekers. De woning wordt in plaats daarvan op inactief gezet.");
-                   await updateDoc(doc(db, 'properties', id), { isActive: false });
                    setProperties(prev => prev.map(p => p.id === id ? { ...p, isActive: false } : p));
                  } else {
-                   await deleteDoc(doc(db, 'properties', id));
                    setProperties(prev => prev.filter(p => p.id !== id));
                    toast.success(t('admin.props.msg_deleted', 'Woning verwijderd.'));
                  }
@@ -2668,8 +2525,8 @@ export default function AdminDashboard() {
                                 prop.status === 'paused' ? 'bg-orange-500/20 text-orange-600' :
                                 'bg-on-surface-variant/20 text-on-surface-variant'
                               }`}>
-                                {prop.status === 'available' && prop.isActive ? 'Actief' : 
-                                 prop.status === 'paused' ? 'Pauze' : 'Inactief'}
+                                {prop.status === 'available' && prop.isActive ? t('admin.status.active', 'Active') : 
+                                 prop.status === 'paused' ? t('admin.status.paused', 'Paused') : t('admin.status.inactive', 'Draft/Inactive')}
                               </span>
                             </div>
                           </td>
@@ -2707,7 +2564,7 @@ export default function AdminDashboard() {
                     >
                       <div className="flex justify-between items-start mb-6">
                         <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${prop.isActive ? 'bg-success/10 text-success' : 'bg-surface-container-highest text-on-surface-variant'}`}>
-                          {prop.isActive ? 'Actief' : 'Concept'}
+                          {prop.isActive ? t('admin.status.active', 'Active') : t('admin.status.inactive', 'Draft/Inactive')}
                         </div>
                         <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-tighter opacity-50"># {prop.id.substring(0, 8)}</div>
                       </div>
@@ -3118,11 +2975,7 @@ export default function AdminDashboard() {
                              <button
                                onClick={async () => {
                                   try {
-                                     await updateDoc(doc(db, 'users', user.id), {
-                                        'verificationStatus.level3.status': 'APPROVED',
-                                        'verificationLevel': 3,
-                                        'updatedAt': serverTimestamp()
-                                     });
+                                     await setAdminVerificationDecision(user.id, 'APPROVED');
                                      setPendingVerifications(prev => prev.filter(p => p.id !== user.id));
                                      toast.success("Goedgekeurd!");
                                   } catch (e) {
@@ -3134,10 +2987,7 @@ export default function AdminDashboard() {
                              <button
                                onClick={async () => {
                                   try {
-                                     await updateDoc(doc(db, 'users', user.id), {
-                                        'verificationStatus.level3.status': 'REJECTED',
-                                        'updatedAt': serverTimestamp()
-                                     });
+                                     await setAdminVerificationDecision(user.id, 'REJECTED');
                                      setPendingVerifications(prev => prev.filter(p => p.id !== user.id));
                                      toast.success("Afgewezen");
                                   } catch (e) {

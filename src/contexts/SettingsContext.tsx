@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 
 export type ThemeType = 
@@ -55,7 +55,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 import { subscribeToExchangeRates } from '../services/currencyService';
 import { DEFAULT_EXCHANGE_RATES } from '../constants';
-import { assignDistributedAlertHour } from '../services/userService';
+import { saveUserSettings } from '../services/userService';
 import { APP_LANGUAGE_STORAGE_KEY } from '../config/appLanguages';
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -241,24 +241,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // Only save to firestore if actual user mode
     if (user && !user.isAnonymous && localStorage.getItem('isTestLogin') !== 'true') {
       try {
-        let assignedHour = smartMatchAlertHour;
-        
-        // If they turned alerts on and have no hour assigned yet, do the distribution allocation!
-        if (smartMatchAlertEnabled && assignedHour === null) {
-          try {
-            assignedHour = await assignDistributedAlertHour();
-            setSmartMatchAlertHourState(assignedHour);
-            localStorage.setItem('app_smart_match_alert_hour', String(assignedHour));
-          } catch (e) {
-            console.error("Failed to allocate distributed alert hour, assigning random", e);
-            assignedHour = Math.floor(Math.random() * 24);
-            setSmartMatchAlertHourState(assignedHour);
-            localStorage.setItem('app_smart_match_alert_hour', String(assignedHour));
-          }
-        }
-
-        const paramsRef = doc(db, 'users', user.uid, 'settings', 'preferences');
-        await setDoc(paramsRef, {
+        const response = await saveUserSettings({
           theme,
           unit,
           dateFormat,
@@ -266,21 +249,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           currency,
           newsletterEnabled,
           smartMatchAlertEnabled,
-          smartMatchAlertHour: assignedHour,
+          smartMatchAlertHour,
           chatMailAlertEnabled,
           providerChatMailAlertOption,
-          language: i18n.language
-        }, { merge: true });
+          language: i18n.language,
+        });
 
-        // Also write to users/userId for easy direct querying
-        const userRef = doc(db, 'users', user.uid);
-        await setDoc(userRef, {
-          smartMatchAlertEnabled,
-          smartMatchAlertHour: assignedHour,
-          chatMailAlertEnabled,
-          providerChatMailAlertOption,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        setSmartMatchAlertHourState(response.smartMatchAlertHour);
+        localStorage.setItem(
+          'app_smart_match_alert_hour',
+          response.smartMatchAlertHour === null ? 'null' : String(response.smartMatchAlertHour)
+        );
 
       } catch (error) {
         console.error("Could not save settings to DB", error);
@@ -308,10 +287,49 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+function readStoredSettings(): SettingsContextType {
+  const smartMatchAlertHourRaw = localStorage.getItem('app_smart_match_alert_hour');
+
+  return {
+    theme: (localStorage.getItem('app_theme') as ThemeType) || 'rustic',
+    setTheme: () => {},
+    unit: (localStorage.getItem('app_unit') as UnitType) || 'metric',
+    setUnit: () => {},
+    dateFormat: (localStorage.getItem('app_date_format') as DateFormatType) || 'DD/MM/YYYY',
+    setDateFormat: () => {},
+    timeFormat: (localStorage.getItem('app_time_format') as TimeFormatType) || '24h',
+    setTimeFormat: () => {},
+    currency: (localStorage.getItem('app_currency') as CurrencyType) || 'EUR',
+    setCurrency: () => {},
+    newsletterEnabled: localStorage.getItem('app_newsletter') !== 'false',
+    setNewsletterEnabled: () => {},
+    smartMatchAlertEnabled: localStorage.getItem('app_smart_match_alert') === 'true',
+    setSmartMatchAlertEnabled: () => {},
+    smartMatchAlertHour:
+      smartMatchAlertHourRaw === null || smartMatchAlertHourRaw === 'null'
+        ? null
+        : Number(smartMatchAlertHourRaw),
+    setSmartMatchAlertHour: () => {},
+    chatMailAlertEnabled: localStorage.getItem('app_chat_match_alert') !== 'false',
+    setChatMailAlertEnabled: () => {},
+    providerChatMailAlertOption:
+      (localStorage.getItem('app_provider_chat_match_option') as SettingsContextType['providerChatMailAlertOption']) ||
+      'always',
+    setProviderChatMailAlertOption: () => {},
+    exchangeRates: DEFAULT_EXCHANGE_RATES,
+    saveSettings: async () => {},
+  };
+}
+
 export function useSettings() {
   const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider');
+  if (context) {
+    return context;
   }
-  return context;
+
+  if (import.meta.env.DEV) {
+    console.warn('[SettingsContext] useSettings called outside SettingsProvider; using stored defaults.');
+  }
+
+  return readStoredSettings();
 }

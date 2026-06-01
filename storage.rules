@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin' ||
+        ((request.auth.token.roles is list) && request.auth.token.roles.hasAny(['admin']))
+      );
+    }
+
+    function isImageUpload() {
+      return request.resource != null &&
+        request.resource.contentType.matches('image/.*') &&
+        request.resource.size < 10 * 1024 * 1024;
+    }
+
+    function isPropertyOwner(propertyId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        (
+          firestore.exists(/databases/ai-studio-0813f7a5-ce1e-4420-b0ad-2ec3d7dcabd2/documents/properties/$(propertyId)) &&
+          firestore.get(/databases/ai-studio-0813f7a5-ce1e-4420-b0ad-2ec3d7dcabd2/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
+        )
+      );
+    }
+
+    match /seeker_photos/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isImageUpload();
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /properties/{propertyId}/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isPropertyOwner(propertyId) && isImageUpload();
+      allow delete: if isPropertyOwner(propertyId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

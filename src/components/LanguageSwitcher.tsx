@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Languages } from 'lucide-react';
 import {
-  APP_LANGUAGES,
   APP_LANGUAGE_FALLBACK,
   APP_LANGUAGE_STORAGE_KEY,
   findAppLanguage,
 } from '../config/appLanguages';
+import LanguageSelectList from './LanguageSelectList';
+import { auth } from '../lib/firebase';
+import { updateUserLanguage } from '../services/userService';
 
 export const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
@@ -33,18 +35,10 @@ export const LanguageSwitcher = () => {
     i18n.changeLanguage(langCode).then(() => {
       localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, langCode);
       setIsOpen(false);
-      
-      // Sync with Firestore if logged in (in background)
-      import('../lib/firebase').then(({ auth, db }) => {
-        if (auth.currentUser) {
-          import('firebase/firestore').then(({ doc, updateDoc, serverTimestamp }) => {
-            updateDoc(doc(db, 'users', auth.currentUser.uid), {
-              language: langCode,
-              updatedAt: serverTimestamp()
-            }).catch(e => console.warn('Could not sync language:', e));
-          });
-        }
-      });
+
+      if (auth.currentUser) {
+        updateUserLanguage(langCode).catch(e => console.warn('Could not sync language:', e));
+      }
     }).catch(err => {
       console.error('Error changing language:', err);
       setIsOpen(false);
@@ -74,6 +68,7 @@ export const LanguageSwitcher = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 bg-surface-container rounded-xl px-4 py-2.5 border border-outline/30 text-on-surface hover:bg-surface-container-high transition-all font-bold text-xs cursor-pointer select-none"
       >
+        <Languages size={14} />
         <span className="uppercase tracking-widest">{currentLang.shortLabel}</span>
         <ChevronDown size={14} className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -85,20 +80,13 @@ export const LanguageSwitcher = () => {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-48 bg-surface rounded-2xl shadow-xl border border-outline overflow-hidden py-2"
+              className="w-[22rem] bg-surface rounded-2xl shadow-xl border border-outline overflow-hidden p-3"
             >
-              {APP_LANGUAGES.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => changeLanguage(lang.code)}
-                  className={`w-full text-left px-4 py-3 hover:bg-primary/5 text-sm font-bold flex items-center justify-between group ${activeLang.startsWith(lang.code) ? 'text-primary bg-primary/5' : 'text-on-surface'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span>{lang.label}</span>
-                  </div>
-                  {activeLang.startsWith(lang.code) && <div className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                </button>
-              ))}
+              <LanguageSelectList
+                selectedCode={activeLang}
+                onSelect={changeLanguage}
+                maxHeightClassName="max-h-96"
+              />
             </motion.div>
           </div>
         )}

@@ -1,4 +1,6 @@
 node_modules/
+.dbg/
+debug-*.md
 build/
 dist/
 coverage/

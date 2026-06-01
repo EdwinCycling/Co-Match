@@ -51,35 +51,24 @@ import {
   Compass,
 } from "lucide-react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  arrayUnion,
-  limit,
-  where,
-  serverTimestamp,
-  onSnapshot,
-  increment,
-  query,
-  collection,
-  getDocs,
-} from "firebase/firestore";
+import { doc, getDoc, limit, where, onSnapshot, query, collection, getDocs } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { LANGUAGES_SORTED } from "../data/languages";
 import SeekerProfileEditor from "./SeekerProfileEditor";
 import { AutocompleteInput } from "./AutocompleteInput";
 
-import { WorldGlobeModal } from "./WorldGlobeModal";
 import {
   generateMatchReport,
   getExistingMatch,
 } from "../services/matchService";
 import { deductCredits } from "../services/creditService";
+import {
+  grantSeekerAccess,
+  toggleSeekerFavorite,
+  updateSeekerLocation,
+} from "../services/seekerProfileService";
+import { saveAdminPropertyImages } from "../services/adminWriteService";
 import { CREDIT_COSTS } from "../constants";
-import MatchReportModal from "./MatchReportModal";
-import InterestWorkflowModal from "./InterestWorkflowModal";
 import VibeHousing from "./VibeHousing";
 import TranslateText from "./TranslateText";
 import { useCurrencyConverter } from "../hooks/useCurrencyConverter";
@@ -89,6 +78,12 @@ import { ExpertHub } from "./ExpertHub";
 import { TrustBadge, TrustPopup } from "./TrustBadge";
 import { MosaicGallery } from "./MosaicGallery";
 import CoHarmonyAnalysis, { calculateCHAScore } from "./CoHarmonyAnalysis";
+
+const WorldGlobeModal = lazy(() =>
+  import("./WorldGlobeModal").then((module) => ({ default: module.WorldGlobeModal }))
+);
+const MatchReportModal = lazy(() => import("./MatchReportModal"));
+const InterestWorkflowModal = lazy(() => import("./InterestWorkflowModal"));
 
 interface Property {
   id: string;
@@ -297,6 +292,7 @@ export default function SeekerDashboard({
   const currencyConverter = useCurrencyConverter();
   const { dateFormat } = useSettings();
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const [hasAdminClaims, setHasAdminClaims] = useState(false);
   const [isMinimalComplete, setIsMinimalComplete] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -319,6 +315,42 @@ export default function SeekerDashboard({
       window.dispatchEvent(new Event('chat-closed'));
     }
   }, [showDirectChat]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAdminClaims = async () => {
+      if (!auth.currentUser) {
+        if (isMounted) {
+          setHasAdminClaims(false);
+        }
+        return;
+      }
+
+      try {
+        const tokenResult = await auth.currentUser.getIdTokenResult();
+        const claims = tokenResult.claims || {};
+        const nextHasAdminClaims =
+          claims.admin === true ||
+          claims.role === "admin" ||
+          (Array.isArray(claims.roles) && claims.roles.includes("admin"));
+
+        if (isMounted) {
+          setHasAdminClaims(nextHasAdminClaims);
+        }
+      } catch {
+        if (isMounted) {
+          setHasAdminClaims(false);
+        }
+      }
+    };
+
+    loadAdminClaims();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [chatsStatus, setChatsStatus] = useState<
     Record<string, { isNew: boolean }>
@@ -343,14 +375,20 @@ export default function SeekerDashboard({
 
   useEffect(() => {
     setCurrentPage(1);
-    // Track tab clicks for PWA install prompt logic (min 2 clicks)
-    window.dispatchEvent(new Event('pwa-tab-click'));
-    
+
     // Dispatch event to hide Co-Match logo in App header when in vibe mode
     window.dispatchEvent(new CustomEvent('vibe-status-changed', { 
       detail: { isVibeActive: activeTab === 'vibe' } 
     }));
   }, [activeTab, searchTerm]);
+
+  const trackPwaDashboardInteraction = (targetTab: "vibe" | "discover" | "favorites" | "inspiratie" | "cha") => {
+    if (targetTab === 'vibe') {
+      return;
+    }
+
+    window.dispatchEvent(new Event('pwa-tab-click'));
+  };
   const [favorites, setFavorites] = useState<Property[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedIdsForComparison, setSelectedIdsForComparison] = useState<
@@ -387,6 +425,97 @@ export default function SeekerDashboard({
     showAllProperties: false,
   });
 
+  const applyLocalSeekerAccess = (
+    propertyId: string,
+    options: {
+      favorite?: boolean;
+      unlockChat?: boolean;
+      unlockDetails?: boolean;
+      unlockMatch?: boolean;
+      unlockAllOptions?: boolean;
+    },
+  ) => {
+    const mergeUnique = (values: string[] | undefined, nextValue: string) =>
+      values?.includes(nextValue) ? values : [...(values || []), nextValue];
+
+    if (typeof options.favorite === "boolean") {
+      setFavoriteIds((prev) =>
+        options.favorite
+          ? (prev.includes(propertyId) ? prev : [...prev, propertyId])
+          : prev.filter((id) => id !== propertyId),
+      );
+    }
+
+    setSeekerProfile((prev: any) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        favorites:
+          typeof options.favorite === "boolean"
+            ? (options.favorite
+                ? mergeUnique(prev.favorites, propertyId)
+                : (prev.favorites || []).filter((id: string) => id !== propertyId))
+            : prev.favorites,
+        unlocked_chats: options.unlockChat
+          ? mergeUnique(prev.unlocked_chats, propertyId)
+          : prev.unlocked_chats,
+        unlocked_details: options.unlockDetails || options.unlockAllOptions
+          ? mergeUnique(prev.unlocked_details, propertyId)
+          : prev.unlocked_details,
+        unlocked_matches: options.unlockMatch || options.unlockAllOptions
+          ? mergeUnique(prev.unlocked_matches, propertyId)
+          : prev.unlocked_matches,
+        unlocked_all_options: options.unlockAllOptions
+          ? mergeUnique(prev.unlocked_all_options, propertyId)
+          : prev.unlocked_all_options,
+      };
+    });
+  };
+
+  const handleToggleFavorite = async (
+    propertyId: string,
+    forcedState?: boolean,
+  ) => {
+    if (!auth.currentUser) return false;
+
+    const shouldFavorite =
+      typeof forcedState === "boolean"
+        ? forcedState
+        : !favoriteIds.includes(propertyId);
+
+    try {
+      await toggleSeekerFavorite(propertyId, shouldFavorite);
+      applyLocalSeekerAccess(propertyId, { favorite: shouldFavorite });
+      return true;
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      return false;
+    }
+  };
+
+  const handleGrantAccess = async (
+    propertyId: string,
+    options: {
+      favorite?: boolean;
+      unlockChat?: boolean;
+      unlockDetails?: boolean;
+      unlockMatch?: boolean;
+      unlockAllOptions?: boolean;
+    },
+  ) => {
+    if (!auth.currentUser) return false;
+
+    try {
+      await grantSeekerAccess(propertyId, options);
+      applyLocalSeekerAccess(propertyId, options);
+      return true;
+    } catch (error) {
+      console.error("Error granting seeker access:", error);
+      return false;
+    }
+  };
+
   const [tempFilters, setTempFilters] = useState<ActiveFilters>({
     city: "",
     lat: null,
@@ -401,6 +530,67 @@ export default function SeekerDashboard({
 
   const [showFilters, setShowFilters] = useState(false);
   const [showGlobeModal, setShowGlobeModal] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() => window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileViewport(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "inspiratie") return;
+
+    const exactGoalMatches = properties.filter((p) => {
+      if (seekerProfile?.goal?.length > 0 && p.features?.goal) {
+        return seekerProfile.goal.includes(p.features.goal);
+      }
+      return true;
+    });
+    const relaxedGoalMatches = properties.filter((p) => {
+      if (seekerProfile?.goal?.length > 0 && p.features?.goal) {
+        return seekerProfile.goal.some((goal: string) => matchGoal(goal, p.features.goal));
+      }
+      return true;
+    });
+    const imageCandidates = exactGoalMatches.filter(
+      (p) => p.teaserImageId || (p.images && p.images.length > 0),
+    );
+
+    // #region debug-point A:inspiration-tab-state
+    fetch("http://127.0.0.1:7777/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "seeker-inspiration-empty",
+        runId: "pre-fix",
+        hypothesisId: "A",
+        location: "SeekerDashboard.tsx:inspiration-tab",
+        msg: "[DEBUG] Inspiration tab state evaluated",
+        data: {
+          activeTab,
+          isMobileViewport,
+          isHiddenByClass: isMobileViewport,
+          propertiesCount: properties.length,
+          seekerGoals: seekerProfile?.goal || [],
+          exactGoalMatches: exactGoalMatches.length,
+          relaxedGoalMatches: relaxedGoalMatches.length,
+          imageCandidates: imageCandidates.length,
+          showFilters,
+          isMinimalComplete,
+          viewportWidth: typeof window !== "undefined" ? window.innerWidth : null,
+        },
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [activeTab, isMinimalComplete, isMobileViewport, properties, seekerProfile, showFilters]);
+
+  useEffect(() => {
+    if (isMobileViewport && showGlobeModal) {
+      setShowGlobeModal(false);
+    }
+  }, [isMobileViewport, showGlobeModal]);
 
   const handleOpenFilters = () => {
     setTempFilters({ ...activeFilters });
@@ -930,11 +1120,8 @@ export default function SeekerDashboard({
               );
             }
             // Trigger background update if admin
-            if (auth.currentUser?.email === "edwin@editsolutions.nl") {
-              updateDoc(doc(db, "properties", prop.id), {
-                images: images,
-                teaserImageId: images[0].id,
-              }).catch(() => {});
+            if (hasAdminClaims) {
+              saveAdminPropertyImages(prop.id, images, images[0].id).catch(() => {});
             }
             return {
               ...prop,
@@ -1004,14 +1191,15 @@ export default function SeekerDashboard({
 
     if (auth.currentUser) {
       try {
-        await setDoc(
-          doc(db, "seeker_profiles", auth.currentUser.uid),
-          {
-            city,
-            country,
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
+        await updateSeekerLocation(city, country);
+        setSeekerProfile((prev: any) =>
+          prev
+            ? {
+                ...prev,
+                city,
+                country,
+              }
+            : prev,
         );
       } catch (error) {
         console.error("Error saving search location:", error);
@@ -1045,6 +1233,7 @@ export default function SeekerDashboard({
 
   const openReport = async (prop: Property, directChat = false, forceUnlocked = false) => {
     if (!auth.currentUser) return;
+    let isFavoritedLocally = favoriteIds.includes(prop.id);
 
     // Check if property is paused
     const hasContact =
@@ -1090,26 +1279,21 @@ export default function SeekerDashboard({
         return;
       }
 
-      // Update local profile and firestore
-      try {
-        const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-        await updateDoc(ref, {
-          unlocked_chats: arrayUnion(prop.id),
-        });
-      } catch (e) {
-        console.error("Error updating unlocked chats:", e);
+      const accessGranted = await handleGrantAccess(prop.id, {
+        unlockChat: true,
+        favorite: true,
+      });
+      if (!accessGranted) {
+        setSelectedProperty(null);
+        setShowDirectChat(false);
+        return;
       }
+      isFavoritedLocally = true;
     }
 
     // Automatically add to favorites
-    try {
-      const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-      await updateDoc(ref, { favorites: arrayUnion(prop.id) });
-      setFavoriteIds((prev) =>
-        prev.includes(prop.id) ? prev : [...prev, prop.id],
-      );
-    } catch (e) {
-      console.error("Error auto-favoriting:", e);
+    if (!isFavoritedLocally) {
+      await handleToggleFavorite(prop.id, true);
     }
 
     setIsMatching(true);
@@ -1319,6 +1503,47 @@ export default function SeekerDashboard({
     return calculateMatchScore(b) - calculateMatchScore(a);
   });
 
+  const inspirationImages = properties
+    .filter((p) => {
+      if (p.ownerSuspended) {
+        return false;
+      }
+
+      const profileGoals = Array.isArray(seekerProfile?.goal)
+        ? seekerProfile.goal
+        : seekerProfile?.goal
+          ? [seekerProfile.goal]
+          : [];
+      const validGoals = profileGoals.filter(Boolean);
+
+      if (validGoals.length > 0 && p.features?.goal) {
+        const hasMatchingGoal = validGoals.some((goal) => matchGoal(goal, p.features.goal));
+        if (!hasMatchingGoal) {
+          return false;
+        }
+      }
+
+      return p.teaserImageId || (p.images && p.images.length > 0);
+    })
+    .slice(0, 20)
+    .map((p) => {
+      const img = p.images?.find((i) => i.id === p.teaserImageId) || p.images?.[0];
+      return {
+        id: p.id,
+        url: img?.url || "",
+        title: p.title + (img?.category ? ` - ${img.category}` : ""),
+        onClick: () => {
+          const isLocked = !isMinimalComplete;
+          if (!isLocked) {
+            handleCardClick(p);
+          } else {
+            setIsEditorOpen(true);
+          }
+        },
+      };
+    })
+    .filter((image) => !!image.url);
+
   const toggleSelectionForComparison = (id: string) => {
     setSelectedIdsForComparison((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
@@ -1363,13 +1588,14 @@ export default function SeekerDashboard({
             </h1>
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Tabs and Partners */}
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex gap-1 bg-surface-container rounded-2xl p-1 border border-outline overflow-x-auto scrollbar-hide whitespace-nowrap">
+            <div className="min-w-0 flex-1">
+              <div className="flex gap-1 bg-surface-container rounded-2xl p-1 border border-outline overflow-x-auto scrollbar-hide whitespace-nowrap min-w-0">
                 <button
                   onClick={() => {
                     if (activeTab === "vibe") { setRefreshKey(prev => prev + 1); }
+                    trackPwaDashboardInteraction("vibe");
                     setActiveTab("vibe");
                     fetchSampleProperties(activeFilters.showAllProperties ? undefined : (searchCity || seekerProfile?.city), seekerProfile);
                   }}
@@ -1381,6 +1607,7 @@ export default function SeekerDashboard({
                 <button
                   onClick={() => {
                     if (activeTab === "discover") { setRefreshKey(prev => prev + 1); }
+                    trackPwaDashboardInteraction("discover");
                     setActiveTab("discover");
                     fetchSampleProperties(activeFilters.showAllProperties ? undefined : (searchCity || seekerProfile?.city), seekerProfile);
                   }}
@@ -1392,6 +1619,7 @@ export default function SeekerDashboard({
                 <button
                   onClick={() => {
                     if (activeTab === "favorites") { setRefreshKey(prev => prev + 1); }
+                    trackPwaDashboardInteraction("favorites");
                     setActiveTab("favorites");
                     fetchSampleProperties(activeFilters.showAllProperties ? undefined : (searchCity || seekerProfile?.city), seekerProfile);
                   }}
@@ -1417,6 +1645,7 @@ export default function SeekerDashboard({
                 <button
                   onClick={() => {
                     if (activeTab === "inspiratie") { setRefreshKey(prev => prev + 1); }
+                    trackPwaDashboardInteraction("inspiratie");
                     setActiveTab("inspiratie");
                     fetchSampleProperties(activeFilters.showAllProperties ? undefined : (searchCity || seekerProfile?.city), seekerProfile);
                   }}
@@ -1430,6 +1659,7 @@ export default function SeekerDashboard({
                 <button
                   onClick={() => {
                     if (activeTab === "cha") { setRefreshKey(prev => prev + 1); }
+                    trackPwaDashboardInteraction("cha");
                     setActiveTab("cha");
                     fetchSampleProperties(activeFilters.showAllProperties ? undefined : (searchCity || seekerProfile?.city), seekerProfile);
                   }}
@@ -1445,7 +1675,7 @@ export default function SeekerDashboard({
             {isMinimalComplete && activeTab === "discover" && (
               <div 
                 ref={filtersRef} 
-                className="relative"
+                className="relative shrink-0 self-start md:self-auto"
               >
                 <button
                   type="button"
@@ -1581,39 +1811,49 @@ export default function SeekerDashboard({
                           />
                         </div>
 
-                        {/* Beautiful interactive Large 3D Globe Button banner */}
-                        <div className={(tempFilters.useProfileSettings || tempFilters.showAllProperties) ? "opacity-35 pointer-events-none" : ""}>
-                          <button
-                            type="button"
-                            disabled={tempFilters.useProfileSettings || tempFilters.showAllProperties}
-                            onClick={() => setShowGlobeModal(true)}
-                            className="w-full border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 active:scale-95 transition-all p-4 rounded-2xl flex flex-col items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm hover:shadow-lg cursor-pointer group relative overflow-hidden"
-                            title={lt("Open 3D Wereldbol", "Open 3D Globe")}
-                          >
-                            <div className="flex items-center gap-2.5">
-                              {/* Pulsing indicator circle */}
-                              <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                              </span>
-                              
-                              <span className="text-3xl transition-transform duration-1000 group-hover:rotate-[360deg] ease-in-out inline-block">🌍</span>
-                              
-                              <div className="flex flex-col items-start">
-                                <span className="text-xs font-black tracking-wider text-primary group-hover:text-primary-dark transition-colors">
-                                  {lt("KIES VIA 3D WERELDBOL / KAART", "CHOOSE VIA 3D GLOBE / MAP")}
+                        {!isMobileViewport && (
+                          <div className={(tempFilters.useProfileSettings || tempFilters.showAllProperties) ? "opacity-35 pointer-events-none" : ""}>
+                            <button
+                              type="button"
+                              disabled={tempFilters.useProfileSettings || tempFilters.showAllProperties}
+                              onClick={() => setShowGlobeModal(true)}
+                              className="w-full border-2 border-dashed border-primary/40 hover:border-primary bg-primary/5 hover:bg-primary/10 active:scale-95 transition-all p-4 rounded-2xl flex flex-col items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm hover:shadow-lg cursor-pointer group relative overflow-hidden"
+                              title={lt("Open 3D Wereldbol", "Open 3D Globe")}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="relative flex h-2.5 w-2.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                                 </span>
-                                <span className="text-[8px] bg-primary text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse mt-0.5">
-                                  {lt("👉 TIK HIER OM TE OPENEN 👈", "👉 TAP HERE TO OPEN 👈")}
-                                </span>
+                                <span className="text-3xl transition-transform duration-1000 group-hover:rotate-[360deg] ease-in-out inline-block">🌍</span>
+                                <div className="flex flex-col items-start">
+                                  <span className="text-xs font-black tracking-wider text-primary group-hover:text-primary-dark transition-colors">
+                                    {lt("KIES VIA 3D WERELDBOL / KAART", "CHOOSE VIA 3D GLOBE / MAP")}
+                                  </span>
+                                  <span className="text-[8px] bg-primary text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse mt-0.5">
+                                    {lt("👉 TIK HIER OM TE OPENEN 👈", "👉 TAP HERE TO OPEN 👈")}
+                                  </span>
+                                </div>
                               </div>
+
+                              <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary transition-all text-center leading-normal mt-1 border-t border-outline/20 pt-1 w-full">
+                                {tempFilters.city ? lt(`Nu geselecteerd: ${tempFilters.city} (klik om te wijzigen)`, `Selected: ${tempFilters.city} (click to edit)`) : lt("Klik hier om een plek op de interactieve 3D aarde te kiezen!", "Click here to choose a place on the interactive 3D Earth!")}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                        {isMobileViewport && (
+                          <div className={(tempFilters.useProfileSettings || tempFilters.showAllProperties) ? "opacity-35 pointer-events-none" : ""}>
+                            <div className="w-full border border-outline/40 bg-surface-container-low rounded-2xl p-4 text-center">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                                {lt("Mobiel gebruikt alleen stadsselectie", "Mobile uses city selection only")}
+                              </p>
+                              <p className="text-xs text-on-surface-variant font-medium mt-2 leading-relaxed">
+                                {lt("De 3D wereldbol is op mobiel verborgen voor een snellere en stabielere ervaring. Kies hierboven gewoon een stad.", "The 3D globe is hidden on mobile for a faster and more stable experience. Please choose a city above.")}
+                              </p>
                             </div>
-                            
-                            <span className="text-[10px] font-bold text-on-surface-variant group-hover:text-primary transition-all text-center leading-normal mt-1 border-t border-outline/20 pt-1 w-full">
-                              {tempFilters.city ? lt(`Nu geselecteerd: ${tempFilters.city} (klik om te wijzigen)`, `Selected: ${tempFilters.city} (click to edit)`) : lt("Klik hier om een plek op de interactieve 3D aarde te kiezen!", "Click here to choose a place on the interactive 3D Earth!")}
-                            </span>
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* 2. Geld (min/max met mooie slider) */}
@@ -1825,11 +2065,8 @@ export default function SeekerDashboard({
               try {
                 const isFav = favoriteIds.includes(prop.id);
                 if (!isFav) {
-                  const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-                  await updateDoc(ref, { favorites: arrayUnion(prop.id) });
-                  setFavoriteIds((prev) =>
-                    prev.includes(prop.id) ? prev : [...prev, prop.id],
-                  );
+                  const didFavorite = await handleToggleFavorite(prop.id, true);
+                  if (!didFavorite) return;
                   toast.success(t("seeker.added_to_favorites"), {
                     duration: 2000,
                     position: "bottom-center",
@@ -2003,35 +2240,7 @@ export default function SeekerDashboard({
                         onOpenReport={() => openReport(prop)}
                         onOpenChat={() => openReport(prop, true)}
                         onToggleFavorite={async () => {
-                          if (!auth.currentUser) return;
-                          const isFav = favoriteIds.includes(prop.id);
-                          const ref = doc(
-                            db,
-                            "seeker_profiles",
-                            auth.currentUser.uid,
-                          );
-                          try {
-                            if (isFav) {
-                              const newFavs = favoriteIds.filter(
-                                (id) => id !== prop.id,
-                              );
-                              await updateDoc(ref, { favorites: newFavs });
-                              setFavoriteIds((prev) =>
-                                prev.filter((id) => id !== prop.id),
-                              );
-                            } else {
-                              await updateDoc(ref, {
-                                favorites: arrayUnion(prop.id),
-                              });
-                              setFavoriteIds((prev) =>
-                                prev.includes(prop.id)
-                                  ? prev
-                                  : [...prev, prop.id],
-                              );
-                            }
-                          } catch (e) {
-                            console.error("Error toggling favorite:", e);
-                          }
+                          await handleToggleFavorite(prop.id);
                         }}
                         seekerLocation={seekerLocation}
                         seekerRadius={seekerRadius}
@@ -2189,47 +2398,28 @@ export default function SeekerDashboard({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-8 hidden md:block" // Force hide on mobile per request
+            className="mt-8"
           >
             <div className="mb-8">
               <h2 className="text-3xl font-display font-black text-on-background">
                 Laat je inspireren
               </h2>
               <p className="text-on-surface-variant font-medium mt-2">
-                Ontdek droomwoningen op een newline manier.
+                Ontdek droomwoningen op een nieuwe manier.
               </p>
             </div>
-            <MosaicGallery
-              images={properties
-                .filter((p) => {
-                  // Only show properties matching the goal
-                  if (seekerProfile?.goal?.length > 0 && p.features?.goal) {
-                    if (!seekerProfile.goal.includes(p.features.goal))
-                      return false;
-                  }
-                  return p.teaserImageId || (p.images && p.images.length > 0);
-                })
-                .slice(0, 20) // show up to 20 images
-                .map((p) => {
-                  const img =
-                    p.images?.find((i) => i.id === p.teaserImageId) ||
-                    p.images?.[0];
-                  return {
-                    id: p.id,
-                    url: img?.url || "",
-                    title:
-                      p.title + (img?.category ? ` - ${img.category}` : ""),
-                    onClick: () => {
-                      const isLocked = !isMinimalComplete;
-                      if (!isLocked) {
-                        handleCardClick(p);
-                      } else {
-                        setIsEditorOpen(true);
-                      }
-                    },
-                  };
-                })}
-            />
+            {inspirationImages.length > 0 ? (
+              <MosaicGallery images={inspirationImages} />
+            ) : (
+              <div className="rounded-3xl border border-outline bg-surface-container-low px-6 py-10 text-center">
+                <h3 className="font-display font-bold text-xl text-on-background">
+                  No data available
+                </h3>
+                <p className="mt-2 text-on-surface-variant font-medium">
+                  Er zijn nu geen inspiratiefoto&apos;s die passen bij jouw profiel of filters.
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -2247,23 +2437,14 @@ export default function SeekerDashboard({
               onOpenChat={(prop) => openReport(prop, true)}
               favoriteIds={favoriteIds}
               onToggleFavorite={async (prop) => {
-                if (!auth.currentUser) return;
-                try {
-                  const isFav = favoriteIds.includes(prop.id);
-                  const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-                  if (isFav) {
-                    const newFavs = favoriteIds.filter(id => id !== prop.id);
-                    await updateDoc(ref, { favorites: newFavs });
-                    setFavoriteIds(newFavs);
-                    toast.success(t("seeker.removed_from_favorites"));
-                  } else {
-                    await updateDoc(ref, { favorites: arrayUnion(prop.id) });
-                    setFavoriteIds(prev => [...prev, prop.id]);
-                    toast.success(t("seeker.added_to_favorites"));
-                  }
-                } catch (e) {
-                  console.error("Error toggling favorite in CHA:", e);
-                }
+                const didToggle = await handleToggleFavorite(prop.id);
+                if (!didToggle) return;
+                const isFav = favoriteIds.includes(prop.id);
+                toast.success(
+                  isFav
+                    ? t("seeker.removed_from_favorites")
+                    : t("seeker.added_to_favorites"),
+                );
               }}
               chatsStatus={chatsStatus}
               onComplete={(harmonyIndex) => {
@@ -2422,31 +2603,7 @@ export default function SeekerDashboard({
             }}
             isFavorite={favoriteIds.includes(selectedProperty.id)}
             onToggleFavorite={async () => {
-              if (!auth.currentUser) return;
-              const isFav = favoriteIds.includes(selectedProperty.id);
-              const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-              try {
-                if (isFav) {
-                  const newFavs = favoriteIds.filter(
-                    (id) => id !== selectedProperty.id,
-                  );
-                  await updateDoc(ref, { favorites: newFavs });
-                  setFavoriteIds((prev) =>
-                    prev.filter((id) => id !== selectedProperty.id),
-                  );
-                } else {
-                  await updateDoc(ref, {
-                    favorites: arrayUnion(selectedProperty.id),
-                  });
-                  setFavoriteIds((prev) =>
-                    prev.includes(selectedProperty.id)
-                      ? prev
-                      : [...prev, selectedProperty.id],
-                  );
-                }
-              } catch (e) {
-                console.error("Error toggling favorite:", e);
-              }
+              await handleToggleFavorite(selectedProperty.id);
             }}
             onShowGallery={(imgs, idx) => {
               setGalleryImages(imgs);
@@ -2475,31 +2632,7 @@ export default function SeekerDashboard({
             }}
             seekerProfile={seekerProfile}
             onToggleFavorite={async () => {
-              if (!auth.currentUser) return;
-              const isFav = favoriteIds.includes(showFullDetails.id);
-              const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-              try {
-                if (isFav) {
-                  const newFavs = favoriteIds.filter(
-                    (id) => id !== showFullDetails.id,
-                  );
-                  await updateDoc(ref, { favorites: newFavs });
-                  setFavoriteIds((prev) =>
-                    prev.filter((id) => id !== showFullDetails.id),
-                  );
-                } else {
-                  await updateDoc(ref, {
-                    favorites: arrayUnion(showFullDetails.id),
-                  });
-                  setFavoriteIds((prev) =>
-                    prev.includes(showFullDetails.id)
-                      ? prev
-                      : [...prev, showFullDetails.id],
-                  );
-                }
-              } catch (e) {
-                console.error("Error toggling favorite:", e);
-              }
+              await handleToggleFavorite(showFullDetails.id);
             }}
             onShowGallery={(imgs, idx) => {
               setGalleryImages(imgs);
@@ -2512,55 +2645,55 @@ export default function SeekerDashboard({
       {/* Interest Workflow Modal */}
       <AnimatePresence>
         {showInterestWorkflow && (
-          <InterestWorkflowModal
-            prop={showInterestWorkflow}
-            seekerProfile={seekerProfile}
-            onClose={() => setShowInterestWorkflow(null)}
-            onOpenFullDetails={async () => {
-              if (!auth.currentUser) return;
+          <Suspense fallback={null}>
+            <InterestWorkflowModal
+              prop={showInterestWorkflow}
+              seekerProfile={seekerProfile}
+              onClose={() => setShowInterestWorkflow(null)}
+              onOpenFullDetails={async () => {
+                if (!auth.currentUser) return;
 
-              const isUnlocked = seekerProfile?.unlocked_details?.includes(
-                showInterestWorkflow.id,
-              );
-
-              if (!isUnlocked) {
-                const confirmed = await deductCredits(
-                  CREDIT_COSTS.VIEW_DETAILS,
-                  `Details bekeken van ${showInterestWorkflow.title}`,
+                const isUnlocked = seekerProfile?.unlocked_details?.includes(
+                  showInterestWorkflow.id,
                 );
-                if (!confirmed) return;
 
-                try {
-                  const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-                  await updateDoc(ref, {
-                    unlocked_details: arrayUnion(showInterestWorkflow.id),
-                    favorites: arrayUnion(showInterestWorkflow.id)
-                  });
-                  if (!favoriteIds.includes(showInterestWorkflow.id)) {
-                    setFavoriteIds(prev => [...prev, showInterestWorkflow.id]);
+                if (!isUnlocked) {
+                  const confirmed = await deductCredits(
+                    CREDIT_COSTS.VIEW_DETAILS,
+                    `Details bekeken van ${showInterestWorkflow.title}`,
+                  );
+                  if (!confirmed) return;
+
+                  const accessGranted = await handleGrantAccess(
+                    showInterestWorkflow.id,
+                    {
+                      unlockDetails: true,
+                      favorite: true,
+                    },
+                  );
+                  if (!accessGranted) {
+                    return;
                   }
-                } catch (e) {
-                  console.error("Error updating unlocked details:", e);
                 }
-              }
 
-              setShowFullDetails(showInterestWorkflow);
-              setReturnToWorkflowOnClose(true);
-              setShowInterestWorkflow(null);
-            }}
-            onOpenChat={() => {
-              setSelectedProperty(showInterestWorkflow);
-              setShowDirectChat(true);
-              setReturnToWorkflowOnClose(true);
-              setShowInterestWorkflow(null);
-            }}
-            onMatchGenerated={(report) => {
-              setMatchReport(report);
-              setSelectedProperty(showInterestWorkflow);
-              setReturnToWorkflowOnClose(true);
-              setShowInterestWorkflow(null);
-            }}
-          />
+                setShowFullDetails(showInterestWorkflow);
+                setReturnToWorkflowOnClose(true);
+                setShowInterestWorkflow(null);
+              }}
+              onOpenChat={() => {
+                setSelectedProperty(showInterestWorkflow);
+                setShowDirectChat(true);
+                setReturnToWorkflowOnClose(true);
+                setShowInterestWorkflow(null);
+              }}
+              onMatchGenerated={(report) => {
+                setMatchReport(report);
+                setSelectedProperty(showInterestWorkflow);
+                setReturnToWorkflowOnClose(true);
+                setShowInterestWorkflow(null);
+              }}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -2568,27 +2701,29 @@ export default function SeekerDashboard({
       <AnimatePresence>
         {(matchReport || showDirectChat) &&
           (showFullDetails || selectedProperty) && (
-            <MatchReportModal
-              report={matchReport || ""}
-              property={selectedProperty || showFullDetails}
-              onClose={() => {
-                const currentProp = selectedProperty || showFullDetails;
-                setMatchReport(null);
-                setShowDirectChat(false);
-                setShowFullDetails(null);
-                setSelectedProperty(null);
-                if (currentProp && returnToWorkflowOnClose) {
-                  setShowInterestWorkflow(currentProp);
-                }
-                setReturnToWorkflowOnClose(false);
-              }}
-              initialShowContact={showDirectChat}
-            />
+            <Suspense fallback={null}>
+              <MatchReportModal
+                report={matchReport || ""}
+                property={selectedProperty || showFullDetails}
+                onClose={() => {
+                  const currentProp = selectedProperty || showFullDetails;
+                  setMatchReport(null);
+                  setShowDirectChat(false);
+                  setShowFullDetails(null);
+                  setSelectedProperty(null);
+                  if (currentProp && returnToWorkflowOnClose) {
+                    setShowInterestWorkflow(currentProp);
+                  }
+                  setReturnToWorkflowOnClose(false);
+                }}
+                initialShowContact={showDirectChat}
+              />
+            </Suspense>
           )}
       </AnimatePresence>
 
       {/* World Globe Picker Modal */}
-      {showGlobeModal && (
+      {showGlobeModal && !isMobileViewport && (
         <Suspense fallback={null}>
           <WorldGlobeModal
             isOpen={showGlobeModal}
@@ -4504,10 +4639,8 @@ function PropertyFullDetailsModal({
       onMatchGenerated(match.report);
       setExistingMatch(match);
 
-      // Update unlocked matches
-      const ref = doc(db, "seeker_profiles", auth.currentUser.uid);
-      await updateDoc(ref, {
-        unlocked_matches: arrayUnion(prop.id),
+      await grantSeekerAccess(prop.id, {
+        unlockMatch: true,
       });
     } catch (error) {
       alert(t("chat.error_send")); // Using a generic send error for now or add report.error_gen

@@ -1,7 +1,8 @@
-import { db } from "../lib/firebase";
-import { collection, doc, getDoc, getDocs, setDoc, query, where, updateDoc, arrayUnion } from "firebase/firestore";
+﻿import { db } from "../lib/firebase";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { calculateCHAScore } from "../components/CoHarmonyAnalysis";
 import { escapeHtml, sanitizeUrl } from "../lib/sanitize";
+import { recordSmartMatchAlertHistory, sendChatEmailNotification } from "./notificationService";
 
 // Helper to extract clean first name (roepnaam/voornaam) for anonymity and prevent showing emails or full name signatures
 export function getCleanFirstName(fullName: string | null | undefined, fallback: string): string {
@@ -177,24 +178,24 @@ export function calculateMatchScoreForAlert(seekerProfile: any, p: any): number 
 const TRANSLATIONS: Record<string, Record<string, string>> = {
   nl: {
     subject: "Nieuwe match in {{city}}: Past dit bij jou?",
-    title: "Jouw Persoonlijke Matchmaker Update 🏡",
+    title: "Jouw Persoonlijke Matchmaker Update ðŸ¡",
     intro: "Hoi {{firstName}}, we hebben weer gekeken voor je. We hebben een aantal nieuwe woningen gevonden die perfect aansluiten bij jouw profiel! Hier zijn de nieuwste matches van de afgelopen 24 uur:",
     view_match_cta: "Bekijk deze match in de app",
     view_all_cta: "Open Co-Match en start met ontdekken",
     footer_text: "Je ontvangt deze e-mail omdat je Smart Match Alerts hebt ingeschakeld in je profielinstellingen.",
     unsubscribe: "Afmelden voor Smart Match Alerts",
-    match_badge: "Match! ✨",
+    match_badge: "Match! âœ¨",
     monthly: "/mnd"
   },
   en: {
     subject: "New match in {{city}}: Does this fit you?",
-    title: "Your Personal Matchmaker Update 🏡",
+    title: "Your Personal Matchmaker Update ðŸ¡",
     intro: "Hi {{firstName}}, we looked for you again. We found some new properties that fit your profile perfectly! Here are your newest matches from the last 24 hours:",
     view_match_cta: "View this match in the app",
     view_all_cta: "Open Co-Match and start exploring",
     footer_text: "You received this email because you enabled Smart Match Alerts in your profile settings.",
     unsubscribe: "Unsubscribe from Smart Match Alerts",
-    match_badge: "Match! ✨",
+    match_badge: "Match! âœ¨",
     monthly: "/mo"
   }
 };
@@ -240,8 +241,8 @@ export function generateSmartMatchAlertEmailHTML(
     const priceText = property.priceType === "tbd" 
       ? "N.o.t.b." 
       : property.priceType === "range"
-        ? `€ ${property.minPrice || 0} - € ${property.maxPrice || 0}${text.monthly}`
-        : `€ ${property.price || 0}${text.monthly}`;
+        ? `â‚¬ ${property.minPrice || 0} - â‚¬ ${property.maxPrice || 0}${text.monthly}`
+        : `â‚¬ ${property.price || 0}${text.monthly}`;
 
     const propUrl = sanitizeUrl(`${siteUrl}?propertyId=${property.id}`);
     const safeImageUrl = sanitizeUrl(imageUrl);
@@ -258,7 +259,7 @@ export function generateSmartMatchAlertEmailHTML(
           </div>
         </div>
         <h3 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700; color: #1e293b;">${safeTitle}</h3>
-        <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b; font-weight: 500;">📍 ${safeLocation}</p>
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #64748b; font-weight: 500;">ðŸ“ ${safeLocation}</p>
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 14px; margin-top: 6px;">
           <span style="font-size: 16px; font-weight: 800; color: #10b981;">${safePriceText}</span>
           <a href="${propUrl}" style="background-color: #8DAA91; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; display: inline-block;">
@@ -282,7 +283,7 @@ export function generateSmartMatchAlertEmailHTML(
     
     <!-- Header -->
     <div style="text-align: center; padding-bottom: 25px; border-bottom: 1px solid #e2e8f0;">
-      <div style="width: 56px; height: 56px; background-color: #8DAA91; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: white; font-size: 28px; line-height: 56px; text-align: center;">🏡</div>
+      <div style="width: 56px; height: 56px; background-color: #8DAA91; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: white; font-size: 28px; line-height: 56px; text-align: center;">ðŸ¡</div>
       <h1 style="color: #6a826e; font-size: 22px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${text.title}</h1>
       <p style="font-size: 12px; color: #10b981; font-weight: 800; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">Co-Match Intelligent Agent</p>
     </div>
@@ -597,8 +598,8 @@ export async function runSmartMatchAlertsJob(
         const priceText = p.priceType === "tbd" 
           ? "N.o.t.b." 
           : p.priceType === "range"
-            ? `€ ${p.minPrice || 0} - € ${p.maxPrice || 0}/mnd`
-            : `€ ${p.price || 0}/mnd`;
+            ? `â‚¬ ${p.minPrice || 0} - â‚¬ ${p.maxPrice || 0}/mnd`
+            : `â‚¬ ${p.price || 0}/mnd`;
 
         return {
           propertyId: p.id,
@@ -624,21 +625,17 @@ export async function runSmartMatchAlertsJob(
         logEntry.subject = subject;
         logEntry.html = html;
 
-        // If NOT manual test, we simulate email sending by appending it to Firestore alert log history inside seekers preferences/history document
-        // This is perfectly compatible with the security rules and doesn't require any modifications
+        // Persist the simulated mail history through the server so the browser no longer writes alert logs directly.
         if (!manualTest) {
           try {
-            const historyRef = doc(db, 'users', user.id, 'settings', 'alert_history');
-            await setDoc(historyRef, {
-              alerts: arrayUnion({
-                subject,
-                html,
-                matchesCount: topMatches.length,
-                matches: logEntry.matches,
-                createdAt: new Date().toISOString(),
-                currentHour
-              })
-            }, { merge: true });
+            await recordSmartMatchAlertHistory({
+              userId: user.id,
+              subject,
+              html,
+              matchesCount: topMatches.length,
+              matches: logEntry.matches,
+              currentHour,
+            });
           } catch (writeErr) {
             console.error(`could not write alert log for user ${user.id}:`, writeErr);
           }
@@ -660,513 +657,37 @@ export async function runSmartMatchAlertsJob(
   return logs;
 }
 
-// Translation dictionary for chat alerts - 100% static, multilingual support without expensive AI calls
-const CHAT_EMAIL_TRANSLATIONS: Record<string, Record<string, string>> = {
-  nl: {
-    // Seeker receives email from provider
-    seeker_subject: "📬 Nieuw chatbericht op Co-Match van {{providerName}}!",
-    seeker_title_label: "Direct Bericht Notificatie",
-    seeker_greeting: "Beste {{seekerName}},",
-    seeker_desc: "Goed nieuws! Woningaanbieder <strong>{{providerName}}</strong> heeft zojuist een nieuw chatbericht gestuurd voor de woning \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    seeker_cta: "Bekijk Chat & Reageer Nu",
-    seeker_footer: "Je ontvangt deze e-mail omdat je e-mailmeldingen voor nieuwe chatberichten hebt ingeschakeld op het Co-Match platform.",
-    seeker_unsubscribe: "Afmelden voor chat-e-mailmeldingen",
-    seeker_reply_urgency: "We raden je aan om zo snel mogelijk te reageren om de kansen op een succesvolle match te maximaliseren en een uitstekend reactieprofiel op te bouwen.",
-
-    // Provider receives email from seeker
-    provider_subject: "💬 Nieuwe reactie op je woning \"{{propertyTitle}}\" van {{seekerName}}!",
-    provider_title_label: "Direct Bericht Notificatie",
-    provider_greeting: "Beste {{providerName}},",
-    provider_desc_first_chat_ever: "Gefeliciteerd! Je hebt de allereerst mogelijke reactie ontvangen op je woning \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}} van kandidaat <strong>{{seekerName}}</strong>.",
-    provider_desc_each_seeker_first_chat: "Goed nieuws! Een nieuwe kandidaat <strong>{{seekerName}}</strong> heeft zojuist zijn eerste reactie gestuurd voor je woning \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    provider_desc_always: "Goed nieuws! Kandidaat <strong>{{seekerName}}</strong> heeft zojuist een nieuw chatbericht gestuurd voor je woning \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    provider_cta: "Bekijk Chat & Beantwoord Nu",
-    provider_unsubscribe: "Afmelden voor chat-e-mailmeldingen",
-    provider_footer: "Je ontvangt deze e-mail omdat je e-mailmeldingen voor nieuwe chatberichten hebt ingeschakeld op het Co-Match platform.",
-    provider_reply_urgency: "We raden je aan om snel te reageren om de interesse en voortgang van je kandidaat optimaal warm te houden."
-  },
-  en: {
-    // Seeker receives email from provider
-    seeker_subject: "📬 New chat message on Co-Match from {{providerName}}!",
-    seeker_title_label: "Direct Message Notification",
-    seeker_greeting: "Dear {{seekerName}},",
-    seeker_desc: "Good news! Landlord <strong>{{providerName}}</strong> just sent you a new chat message regarding property \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    seeker_cta: "View Chat & Reply Now",
-    seeker_footer: "You are receiving this email because you have enabled email notifications for new chat messages on Co-Match.",
-    seeker_unsubscribe: "Unsubscribe from chat email notifications",
-    seeker_reply_urgency: "We recommend you reply as soon as possible to maximize your chances of a successful match and build an excellent response profile.",
-
-    // Provider receives email from seeker
-    provider_subject: "💬 New reaction on your property \"{{propertyTitle}}\" from {{seekerName}}!",
-    provider_title_label: "Direct Message Notification",
-    provider_greeting: "Dear {{providerName}},",
-    provider_desc_first_chat_ever: "Congratulations! You received the very first reaction on your property \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}} from candidate <strong>{{seekerName}}</strong>.",
-    provider_desc_each_seeker_first_chat: "Good news! A new candidate <strong>{{seekerName}}</strong> sent their first reaction for your property \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    provider_desc_always: "Great news! Candidate <strong>{{seekerName}}</strong> has sent a new chat message regarding your property \"<strong>{{propertyTitle}}</strong>\" in {{propertyCity}}.",
-    provider_cta: "View Chat & Reply Now",
-    provider_unsubscribe: "Unsubscribe from chat email notifications",
-    provider_footer: "You are receiving this email because you have enabled email notifications for new chat messages on Co-Match.",
-    provider_reply_urgency: "We recommend replying quickly to keep your candidate's interest and progress warm."
-  }
-};
-
-// 5. Instantly sends a friendly notification email when a provider chats with a seeker
+// Chat alert e-mail flow runs server-side (notification-writes) so clients never read other users' settings.
 export async function sendChatMessageEmailNotification(
   chatId: string,
   messageText: string,
-  senderUid: string
+  _senderUid: string
 ): Promise<{ status: string; reason?: string }> {
   try {
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    if (!chatSnap.exists()) {
-      return { status: 'failed', reason: 'chat_does_not_exist' };
-    }
-
-    const chatData = chatSnap.data();
-    const seekerId = chatData.seekerId;
-    const providerId = chatData.providerId;
-    const propertyId = chatData.propertyId;
-
-    if (!seekerId || !providerId || !propertyId) {
-      return { status: 'failed', reason: 'invalid_chat_references' };
-    }
-
-    // Cooldown check: 15 minutes of quiet time from this provider to seeker
-    const lastSent = chatData.lastChatMailSentAt;
-    if (lastSent) {
-      const elapsedMs = Date.now() - new Date(lastSent).getTime();
-      if (elapsedMs < 15 * 60 * 1000) {
-        console.log(`[Chat Mail] Cooldown active. Skipping email to prevent spam.`);
-        return { status: 'skipped', reason: 'cooldown_active' };
-      }
-    }
-
-    // Check Seeker's preference (defaults to true)
-    const prefSnap = await getDoc(doc(db, 'users', seekerId, 'settings', 'preferences'));
-    let chatMailAlertEnabled = true;
-    let seekerLang = 'nl';
-    if (prefSnap.exists()) {
-      const prefData = prefSnap.data();
-      if (prefData.chatMailAlertEnabled === false) {
-        chatMailAlertEnabled = false;
-      }
-      if (prefData.language) {
-        seekerLang = prefData.language;
-      }
-    }
-
-    if (!chatMailAlertEnabled) {
-      console.log(`[Chat Mail] Seeker has disabled email notification in setting.`);
-      return { status: 'skipped', reason: 'seeker_disabled_notifications' };
-    }
-
-    // Fetch details of property and seeker display name and profiles
-    const [propSnap, seekerUserSnap, providerUserSnap, seekerProfileSnap, providerProfileSnap] = await Promise.all([
-      getDoc(doc(db, 'properties', propertyId)),
-      getDoc(doc(db, 'users', seekerId)),
-      getDoc(doc(db, 'users', providerId)),
-      getDoc(doc(db, 'seeker_profiles', seekerId)),
-      getDoc(doc(db, 'providers', providerId))
-    ]);
-
-    const propertyTitle = propSnap.exists() ? (propSnap.data().title || "Woning") : "Woning";
-    const propertyCity = propSnap.exists() ? (propSnap.data().city || "de geselecteerde stad") : "de geselecteerde stad";
-    
-    // Anonymity names: strictly fetch roepnaam (first name) from profile, then fallback
-    const seekerProfData = seekerProfileSnap.exists() ? seekerProfileSnap.data() : null;
-    const providerProfData = providerProfileSnap.exists() ? providerProfileSnap.data() : null;
-
-    let seekerFirstName = "";
-    if (seekerProfData && seekerProfData.firstName) {
-      seekerFirstName = seekerProfData.firstName.trim().split(/\s+/)[0];
-      seekerFirstName = seekerFirstName.charAt(0).toUpperCase() + seekerFirstName.slice(1).toLowerCase();
-    }
-    if (!seekerFirstName && seekerUserSnap.exists()) {
-      const uData = seekerUserSnap.data();
-      if (uData.firstName) {
-        seekerFirstName = uData.firstName.trim().split(/\s+/)[0];
-        seekerFirstName = seekerFirstName.charAt(0).toUpperCase() + seekerFirstName.slice(1).toLowerCase();
-      } else {
-        seekerFirstName = getCleanFirstName(uData.displayName, "Woningzoeker");
-      }
-    }
-    if (!seekerFirstName) {
-      seekerFirstName = "Woningzoeker";
-    }
-
-    let providerFirstName = "";
-    if (providerProfData && providerProfData.firstName) {
-      providerFirstName = providerProfData.firstName.trim().split(/\s+/)[0];
-      providerFirstName = providerFirstName.charAt(0).toUpperCase() + providerFirstName.slice(1).toLowerCase();
-    }
-    if (!providerFirstName && providerUserSnap.exists()) {
-      const uData = providerUserSnap.data();
-      if (uData.firstName) {
-        providerFirstName = uData.firstName.trim().split(/\s+/)[0];
-        providerFirstName = providerFirstName.charAt(0).toUpperCase() + providerFirstName.slice(1).toLowerCase();
-      } else {
-        providerFirstName = getCleanFirstName(uData.displayName, "Aanbieder");
-      }
-    }
-    if (!providerFirstName) {
-      providerFirstName = "Aanbieder";
-    }
-
-    const siteUrl = typeof window !== 'undefined' ? window.location.origin : "https://co-match.nl";
-    const chatUrl = `${siteUrl}?chatId=${chatId}`;
-
-    // Message sanitization for email preview block
-    const sanitizedMsg = messageText && messageText.length > 250 
-      ? messageText.substring(0, 250) + "..." 
-      : messageText;
-
-    const langKey = seekerLang.startsWith('en') ? 'en' : 'nl';
-    const textTrans = CHAT_EMAIL_TRANSLATIONS[langKey];
-
-    const subject = textTrans.seeker_subject.replace('{{providerName}}', providerFirstName);
-    const greetingLabel = textTrans.seeker_greeting.replace('{{seekerName}}', seekerFirstName);
-    const descriptionText = textTrans.seeker_desc
-      .replace('{{providerName}}', providerFirstName)
-      .replace('{{propertyTitle}}', propertyTitle)
-      .replace('{{propertyCity}}', propertyCity);
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <div style="max-width: 600px; margin: 30px auto; padding: 25px; border-radius: 24px; border: 1px solid #e2e8f0; background-color: #FAF9F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-    
-    <!-- Header -->
-    <div style="text-align: center; padding-bottom: 25px; border-bottom: 1px solid #e2e8f0;">
-      <div style="width: 56px; height: 56px; background-color: #8DAA91; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: white; font-size: 28px; line-height: 56px; text-align: center;">💬</div>
-      <h1 style="color: #6a826e; font-size: 20px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Co-Match Chat</h1>
-      <p style="font-size: 11px; color: #10b981; font-weight: 800; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">${textTrans.seeker_title_label}</p>
-    </div>
-
-    <!-- Intro Message -->
-    <div style="margin: 25px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-      <p style="margin: 0 0 12px 0; font-weight: 700; font-size: 16px; color: #1e293b;">${greetingLabel}</p>
-      <p style="margin: 0 0 16px 0;">${descriptionText}</p>
-      
-      <!-- Content bubble -->
-      <div style="background-color: #f1f5f9; border-left: 4px solid #8DAA91; border-radius: 12px; padding: 16px; margin: 20px 0; font-style: italic; color: #1e293b; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">"${sanitizedMsg}"</div>
-      
-      <p style="margin: 0 0 16px 0;">${textTrans.seeker_reply_urgency}</p>
-    </div>
-
-    <!-- CTA Center Button -->
-    <div style="text-align: center; margin: 30px 0 25px 0;">
-      <a href="${chatUrl}" style="display: inline-block; background-color: #8DAA91; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 6px -1px rgba(141, 170, 145, 0.3);">
-        ${textTrans.seeker_cta}
-      </a>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 11px; color: #64748b; line-height: 1.5;">
-      <p style="margin: 0 0 10px 0;">${textTrans.seeker_footer}</p>
-      <p style="margin: 0;">
-        <a href="${siteUrl}?unsubscribeChatAlerts=true" style="color: #64748b; text-decoration: underline; font-weight: 600;">
-          ${textTrans.seeker_unsubscribe}
-        </a>
-      </p>
-    </div>
-
-  </div>
-</body>
-</html>
-    `;
-
-    // 1. Simulate sending of this email by saving to the active sender's `alert_history` to follow Firestore security rules
-    const historyRef = doc(db, 'users', senderUid, 'settings', 'alert_history');
-    await setDoc(historyRef, {
-      alerts: arrayUnion({
-        subject,
-        html,
-        matchesCount: 1,
-        createdAt: new Date().toISOString(),
-        isChatAlert: true,
-        chatSenderName: providerFirstName,
-        chatText: sanitizedMsg,
-        recipientName: seekerFirstName,
-        recipientEmail: seekerUserSnap.exists() ? (seekerUserSnap.data().email || 'Geen email') : 'Geen email'
-      })
-    }, { merge: true });
-
-    // 2. Set the 15-minute quiet period cooldown timestamp on the chat document
-    await updateDoc(chatRef, {
-      lastChatMailSentAt: new Date().toISOString()
-    });
-
-    console.log(`[Chat Mail] Simulated chat mail notification sent successfully to ${seekerId}! Cooldown set.`);
-    return { status: 'sent' };
-
-  } catch (err: any) {
-    console.error("[Chat Mail] Error sending notification email:", err);
-    return { status: 'failed', reason: err.message || 'unknown_error' };
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+    return await sendChatEmailNotification({ chatId, messageText, siteUrl });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    console.error('[Chat Mail] Server notification failed:', err);
+    return { status: 'failed', reason: message };
   }
 }
 
 export async function sendProviderChatMessageEmailNotification(
   chatId: string,
   messageText: string,
-  seekerId: string
+  _seekerId: string
 ): Promise<{ status: 'sent' | 'skipped' | 'failed'; reason?: string }> {
   try {
-    const chatRef = doc(db, 'chats', chatId);
-    const chatSnap = await getDoc(chatRef);
-    if (!chatSnap.exists()) {
-      return { status: 'failed', reason: 'chat_not_found' };
-    }
-
-    const chatData = chatSnap.data();
-    const providerId = chatData.providerId;
-    const propertyId = chatData.propertyId;
-
-    if (!providerId || !propertyId) {
-      return { status: 'failed', reason: 'missing_ids_in_chat' };
-    }
-
-    // 1. Fetch Provider Profile, Seeker Profile, and property details
-    const [providerSnap, propertySnap, seekerSnap, providerProfileSnap, seekerProfileSnap] = await Promise.all([
-      getDoc(doc(db, 'users', providerId)),
-      getDoc(doc(db, 'properties', propertyId)),
-      getDoc(doc(db, 'users', seekerId)),
-      getDoc(doc(db, 'providers', providerId)),
-      getDoc(doc(db, 'seeker_profiles', seekerId))
-    ]);
-
-    if (!providerSnap.exists() || !propertySnap.exists()) {
-      return { status: 'failed', reason: 'provider_or_property_not_found' };
-    }
-
-    const providerData = providerSnap.data();
-    const propertyData = propertySnap.data();
-
-    // 2. Fetch Provider's alert preferences from settingsPreferences or root user doc
-    const prefSnap = await getDoc(doc(db, 'users', providerId, 'settings', 'preferences'));
-    let providerChatMailAlertEnabled = true;
-    let providerChatMailAlertOption = 'always';
-    let providerLang = 'nl';
-
-    if (prefSnap.exists()) {
-      const prefData = prefSnap.data();
-      if (prefData.chatMailAlertEnabled === false) {
-        providerChatMailAlertEnabled = false;
-      }
-      if (prefData.providerChatMailAlertOption) {
-        providerChatMailAlertOption = prefData.providerChatMailAlertOption;
-      }
-      if (prefData.language) {
-        providerLang = prefData.language;
-      }
-    } else {
-      if (providerData.chatMailAlertEnabled === false) {
-        providerChatMailAlertEnabled = false;
-      }
-      if (providerData.providerChatMailAlertOption) {
-        providerChatMailAlertOption = providerData.providerChatMailAlertOption;
-      }
-    }
-
-    if (!providerChatMailAlertEnabled) {
-      console.log(`[Provider Chat Mail] Provider has chat e-mail notifications disabled entirely.`);
-      return { status: 'skipped', reason: 'disabled_by_user' };
-    }
-
-    // Anonymity firstnames from actual profile collections
-    const seekerProfData = seekerProfileSnap.exists() ? seekerProfileSnap.data() : null;
-    const providerProfData = providerProfileSnap.exists() ? providerProfileSnap.data() : null;
-
-    let seekerFirstName = "";
-    if (seekerProfData && seekerProfData.firstName) {
-      seekerFirstName = seekerProfData.firstName.trim().split(/\s+/)[0];
-      seekerFirstName = seekerFirstName.charAt(0).toUpperCase() + seekerFirstName.slice(1).toLowerCase();
-    }
-    if (!seekerFirstName && seekerSnap.exists()) {
-      const uData = seekerSnap.data();
-      if (uData.firstName) {
-        seekerFirstName = uData.firstName.trim().split(/\s+/)[0];
-        seekerFirstName = seekerFirstName.charAt(0).toUpperCase() + seekerFirstName.slice(1).toLowerCase();
-      } else {
-        seekerFirstName = getCleanFirstName(uData.displayName, "Woningzoeker");
-      }
-    }
-    if (!seekerFirstName) {
-      seekerFirstName = "Woningzoeker";
-    }
-
-    let providerFirstName = "";
-    if (providerProfData && providerProfData.firstName) {
-      providerFirstName = providerProfData.firstName.trim().split(/\s+/)[0];
-      providerFirstName = providerFirstName.charAt(0).toUpperCase() + providerFirstName.slice(1).toLowerCase();
-    }
-    if (!providerFirstName && providerSnap.exists()) {
-      const uData = providerSnap.data();
-      if (uData.firstName) {
-        providerFirstName = uData.firstName.trim().split(/\s+/)[0];
-        providerFirstName = providerFirstName.charAt(0).toUpperCase() + providerFirstName.slice(1).toLowerCase();
-      } else {
-        providerFirstName = getCleanFirstName(uData.displayName, "Aanbieder");
-      }
-    }
-    if (!providerFirstName) {
-      providerFirstName = "Aanbieder";
-    }
-
-    // 3. Evaluate selected setting logic
-    const messages = chatData.messages || [];
-    const messageCount = messages.length;
-
-    if (providerChatMailAlertOption === 'only_first_chat_ever') {
-      const chatsQuery = query(collection(db, 'chats'), where('propertyId', '==', propertyId));
-      const chatsSnap = await getDocs(chatsQuery);
-      const totalChatsForProperty = chatsSnap.size;
-
-      if (totalChatsForProperty > 1 || messageCount > 1) {
-        console.log(`[Provider Chat Mail] Skipped because provider settings only allow alerts on the very first chat ever for this property (per property). (Total chats: ${totalChatsForProperty}, current messages: ${messageCount})`);
-        return { status: 'skipped', reason: 'not_first_chat_ever' };
-      }
-    } else if (providerChatMailAlertOption === 'each_seeker_first_chat') {
-      if (messageCount > 1) {
-        console.log(`[Provider Chat Mail] Skipped because provider settings only allow alerts on the first message from each candidate seeker. (Current messages: ${messageCount})`);
-        return { status: 'skipped', reason: 'not_seeker_first_chat' };
-      }
-    } else {
-      // Option: 'always'. Check 15-minute cooldown
-      const lastSent = chatData.lastProviderChatMailSentAt;
-      if (lastSent) {
-        const elapsedMs = Date.now() - new Date(lastSent).getTime();
-        if (elapsedMs < 15 * 60 * 1000) {
-          console.log(`[Provider Chat Mail] Cooldown is active. Skipping email to prevent spam. (elapsed: ${Math.round(elapsedMs / 1000)} seconds)`);
-          return { status: 'skipped', reason: 'cooldown_active' };
-        }
-      }
-    }
-
-    // 4. Generate email HTML and styling
-    const propertyTitle = propertyData.title || 'Mijn woning';
-    const propertyCity = propertyData.city || 'geselecteerde stad';
-    const sanitizedMsg = messageText.replace(/[<>]/g, '');
-
-    const chatUrl = typeof window !== 'undefined' 
-      ? `${window.location.protocol}//${window.location.host}/?openChatId=${propertyId}`
-      : `https://co-match.nl/?openChatId=${propertyId}`;
-      
-    const siteUrl = typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.host}/`
-      : `https://co-match.nl/`;
-
-    const langKey = providerLang === 'en' ? 'en' : 'nl';
-    const textTrans = CHAT_EMAIL_TRANSLATIONS[langKey];
-
-    const subject = textTrans.provider_subject
-      .replace('{{propertyTitle}}', propertyTitle)
-      .replace('{{seekerName}}', seekerFirstName);
-
-    const greetingLabel = textTrans.provider_greeting.replace('{{providerName}}', providerFirstName);
-    
-    let descriptionText = '';
-    if (providerChatMailAlertOption === 'only_first_chat_ever') {
-      descriptionText = textTrans.provider_desc_first_chat_ever
-        .replace('{{propertyTitle}}', propertyTitle)
-        .replace('{{propertyCity}}', propertyCity)
-        .replace('{{seekerName}}', seekerFirstName);
-    } else if (providerChatMailAlertOption === 'each_seeker_first_chat') {
-      descriptionText = textTrans.provider_desc_each_seeker_first_chat
-        .replace('{{propertyTitle}}', propertyTitle)
-        .replace('{{propertyCity}}', propertyCity)
-        .replace('{{seekerName}}', seekerFirstName);
-    } else {
-      descriptionText = textTrans.provider_desc_always
-        .replace('{{propertyTitle}}', propertyTitle)
-        .replace('{{propertyCity}}', propertyCity)
-        .replace('{{seekerName}}', seekerFirstName);
-    }
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${subject}</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-  <div style="max-width: 600px; margin: 30px auto; padding: 25px; border-radius: 24px; border: 1px solid #e2e8f0; background-color: #FAF9F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-    
-    <!-- Header -->
-    <div style="text-align: center; padding-bottom: 25px; border-bottom: 1px solid #e2e8f0;">
-      <div style="width: 56px; height: 56px; background-color: #3b82f6; border-radius: 18px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: white; font-size: 28px; line-height: 56px; text-align: center;">💬</div>
-      <h1 style="color: #1e3a8a; font-size: 20px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Co-Match Chat</h1>
-      <p style="font-size: 11px; color: #3b82f6; font-weight: 800; text-transform: uppercase; margin-top: 6px; letter-spacing: 0.05em;">${textTrans.provider_title_label}</p>
-    </div>
-
-    <!-- Intro Message -->
-    <div style="margin: 25px 0; font-size: 14px; line-height: 1.6; color: #334155;">
-      <p style="margin: 0 0 12px 0; font-weight: 700; font-size: 16px; color: #1e293b;">${greetingLabel}</p>
-      <p style="margin: 0 0 16px 0;">${descriptionText}</p>
-      
-      <!-- Content bubble -->
-      <div style="background-color: #f1f5f9; border-left: 4px solid #3b82f6; border-radius: 12px; padding: 16px; margin: 20px 0; font-style: italic; color: #1e293b; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">"${sanitizedMsg}"</div>
-      
-      <p style="margin: 0 0 16px 0;">${textTrans.provider_reply_urgency}</p>
-    </div>
-
-    <!-- CTA Center Button -->
-    <div style="text-align: center; margin: 30px 0 25px 0;">
-      <a href="${chatUrl}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);">
-        ${textTrans.provider_cta}
-      </a>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 11px; color: #64748b; line-height: 1.5;">
-      <p style="margin: 0 0 10px 0;">${textTrans.provider_footer}</p>
-      <p style="margin: 0;">
-        <a href="${siteUrl}?unsubscribeChatAlerts=true" style="color: #64748b; text-decoration: underline; font-weight: 600;">
-          ${textTrans.provider_unsubscribe}
-        </a>
-      </p>
-    </div>
-
-  </div>
-</body>
-</html>
-    `;
-
-    // 5. Store alert_history on the seeker record (the active sender) to bypass Firestore cross-user write security rules
-    const historyRef = doc(db, 'users', seekerId, 'settings', 'alert_history');
-    await setDoc(historyRef, {
-      alerts: arrayUnion({
-        subject,
-        html,
-        matchesCount: 1,
-        createdAt: new Date().toISOString(),
-        isChatAlert: true,
-        isProviderAlert: true,
-        chatSenderName: seekerFirstName,
-        chatText: sanitizedMsg,
-        recipientName: providerFirstName,
-        recipientEmail: providerData.email || 'Geen email'
-      })
-    }, { merge: true });
-
-    // 6. Record lastProviderChatMailSentAt for the 15-minute cooldown
-    await updateDoc(chatRef, {
-      lastProviderChatMailSentAt: new Date().toISOString()
-    });
-
-    console.log(`[Provider Chat Mail] Simulated provider chat mail successfully queued and saved for ${providerId}!`);
-    return { status: 'sent' };
-
-  } catch (err: any) {
-    console.error("[Provider Chat Mail] Error during simulated provider mail:", err);
-    return { status: 'failed', reason: err.message || 'unknown_error' };
+    const siteUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const result = await sendChatEmailNotification({ chatId, messageText, siteUrl });
+    return {
+      status: result.status === 'sent' ? 'sent' : result.status === 'skipped' ? 'skipped' : 'failed',
+      reason: result.reason,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'unknown_error';
+    console.error('[Provider Chat Mail] Server notification failed:', err);
+    return { status: 'failed', reason: message };
   }
 }

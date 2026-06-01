@@ -2,6 +2,7 @@ import { db } from "../lib/firebase";
 import { collection, query, getDocs, orderBy, limit, where } from "firebase/firestore";
 import { postToServerFunction } from "../lib/serverApi";
 
+
 export interface NewsletterInputData {
   upcomingWeekId: string;
   upcomingWeekRange: string;

@@ -42,12 +42,12 @@ npm install
 npm run dev
 ```
 
-This starts the Vite app on `http://localhost:3001`.
+This starts the Vite app on `http://localhost:3000`.
 
 ### Frontend + Netlify Functions
 
 ```bash
-npx netlify dev --port 3001 --targetPort 5173
+npx netlify dev --port 3000 --targetPort 3001
 ```
 
 Use this mode if you want the secure backend functions to work locally as well.

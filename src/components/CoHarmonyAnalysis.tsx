@@ -24,10 +24,10 @@ import {
   Clock
 } from "lucide-react";
 import { AutocompleteInput } from "./AutocompleteInput";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { db, auth } from "../lib/firebase";
+import { auth } from "../lib/firebase";
 import { useCurrencyConverter } from "../hooks/useCurrencyConverter";
 import { toast } from "react-hot-toast";
+import { saveSeekerCha } from "../services/seekerProfileService";
 
 // Interface for a property
 interface Property {
@@ -642,12 +642,7 @@ export default function CoHarmonyAnalysis({
     
     if (auth.currentUser) {
       try {
-        const userRef = doc(db, "seeker_profiles", auth.currentUser.uid);
-        await updateDoc(userRef, {
-          harmony_index: bestScore,
-          harmony_answers: rawAnswers,
-          has_completed_cha: true
-        });
+        await saveSeekerCha(bestScore, rawAnswers);
         // Call callback to let parent component know CHA is completed
         onComplete(bestScore);
       } catch (e) {

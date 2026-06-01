@@ -1,4 +1,60 @@
-import { createGeminiClient, ensurePost, handleOptions, json, parseBody, requireAdmin, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, enforceRateLimit, ensurePost, handleOptions, json, parseBody, requireAdmin, withErrorHandling } from './_shared.mjs';
+
+// #region debug-point D:reporter
+const reportNewsletterDebug = (hypothesisId, location, msg, data = {}) => fetch('http://127.0.0.1:7777/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'admin-save-errors', runId: 'post-fix', hypothesisId, location, msg: `[DEBUG] ${msg}`, data, ts: Date.now() }) }).catch(() => {});
+// #endregion
+
+function getNestedErrorStatus(error) {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+
+  const directStatus = error.status ?? error.code;
+  if (typeof directStatus === 'number') {
+    return directStatus;
+  }
+
+  if (typeof directStatus === 'string') {
+    const parsed = Number(directStatus);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  const nestedStatus = error.error?.status ?? error.error?.code;
+  if (typeof nestedStatus === 'number') {
+    return nestedStatus;
+  }
+
+  if (typeof nestedStatus === 'string') {
+    const parsed = Number(nestedStatus);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function getNestedErrorText(error) {
+  if (!error || typeof error !== 'object') {
+    return String(error || '');
+  }
+
+  const parts = [
+    error.message,
+    error.status,
+    error.code,
+    error.error?.message,
+    error.error?.status,
+    error.error?.code,
+  ];
+
+  return parts
+    .filter((part) => part !== undefined && part !== null)
+    .map((part) => String(part))
+    .join(' | ');
+}
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -8,8 +64,21 @@ export const handler = async (event) => {
   if (postResponse) return postResponse;
 
   return withErrorHandling(async () => {
-    await requireAdmin(event);
+    const admin = await requireAdmin(event);
+    // #region debug-point D:admin-entry
+    await reportNewsletterDebug('D', 'ai-newsletter-html.mjs:handler', 'Entered ai-newsletter-html handler', { uid: admin.uid, email: admin.email || null, admin: admin.admin === true, role: admin.role || null, roles: Array.isArray(admin.roles) ? admin.roles : null });
+    // #endregion
+    await enforceRateLimit({
+      scope: 'ai-newsletter-html',
+      identifier: admin.uid,
+      maxRequests: 3,
+      windowMs: 10 * 60 * 1000,
+      errorMessage: 'Error: Too many AI newsletter requests. Please try again in a few minutes.',
+    });
     const { data, siteUrl } = parseBody(event);
+    // #region debug-point E:payload-shape
+    await reportNewsletterDebug('E', 'ai-newsletter-html.mjs:handler', 'Parsed newsletter payload', { hasData: !!data, hasSiteUrl: !!siteUrl, updates: Array.isArray(data?.recentUpdates) ? data.recentUpdates.length : null, highlighted: Array.isArray(data?.highlightedPropertiesList) ? data.highlightedPropertiesList.length : null, properties: Array.isArray(data?.propertiesList) ? data.propertiesList.length : null });
+    // #endregion
 
     if (!data || !siteUrl) {
       return json(400, { error: 'Error: Missing newsletter input.' });
@@ -68,14 +137,35 @@ ${JSON.stringify(data.propertiesList, null, 2)}
 
 Generate the raw HTML content now. Remember: no markdown markup around the return value.`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.7,
-      },
-    });
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        },
+      });
+    } catch (error) {
+      // #region debug-point E:gemini-failure
+      await reportNewsletterDebug('E', 'ai-newsletter-html.mjs:generateContent', 'Gemini generateContent failed', { error: error instanceof Error ? error.message : String(error) });
+      // #endregion
+      const status = getNestedErrorStatus(error);
+      const message = getNestedErrorText(error);
+      if (
+        status === 503 ||
+        message.includes('UNAVAILABLE') ||
+        message.includes('"status":"UNAVAILABLE"') ||
+        message.includes('"code":503') ||
+        message.includes('503')
+      ) {
+        return json(503, {
+          error: 'Error: Newsletter AI is tijdelijk niet beschikbaar door hoge vraag. Probeer het over een paar minuten opnieuw.',
+        });
+      }
+      throw error;
+    }
 
     let html = response.text?.trim() || '';
     if (html.startsWith('```html')) {

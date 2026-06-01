@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Send, MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
+import { postToServerFunction, ServerFunctionError } from '../lib/serverApi';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -31,32 +30,36 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, use
       return;
     }
 
-    // Basic rate limit check (simple cookie/localStorage based)
-    const lastSent = localStorage.getItem('lastContactTime');
-    if (lastSent && Date.now() - parseInt(lastSent) < 60000) { // 1 minute
-      toast.error('Je kunt maximaal één bericht per minuut sturen.');
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'contact_requests'), {
-        uid,
-        email: userEmail,
+      await postToServerFunction<{ ok: boolean }>('contact-requests', {
+        requestType: 'general',
         title,
         message,
-        createdAt: serverTimestamp(),
-        status: 'OPEN',
-        type: 'general'
       });
       
-      localStorage.setItem('lastContactTime', Date.now().toString());
       toast.success('Bericht succesvol verzonden!');
       setTitle('');
       setMessage('');
       onClose();
     } catch (error: any) {
       console.error('Error sending contact request:', error);
+
+      if (error instanceof ServerFunctionError && error.status === 400) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (error instanceof ServerFunctionError && error.status === 500) {
+        toast.error('Er ging iets mis. Probeer het later opnieuw.');
+        return;
+      }
+
+      if (error instanceof Error) {
+        toast.error(error.message);
+        return;
+      }
+
       toast.error('Er ging iets mis. Probeer het later opnieuw.');
     } finally {
       setIsSubmitting(false);

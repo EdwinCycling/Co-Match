@@ -21,9 +21,13 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
-    // Admin check - Robust and prioritized
-    function isAdmin() { 
-      return isSignedIn() && ('email' in request.auth.token) && (request.auth.token.email == 'edwin@editsolutions.nl');
+    // Admin check based on custom claims
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin' ||
+        ((request.auth.token.roles is list) && request.auth.token.roles.hasAny(['admin']))
+      );
     }
 
     // Global settings (Currency rates, etc)
@@ -35,6 +39,12 @@ service cloud.firestore {
     // Health check path
     match /test/connection {
       allow read: if true;
+    }
+
+    // Public profile card data used by chats and lightweight profile previews
+    match /public_profiles/{userId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     // User profiles & settings
@@ -64,15 +74,30 @@ service cloud.firestore {
                (!('providerChatMailAlertOption' in incoming()) || incoming().providerChatMailAlertOption in ['only_first_chat_ever', 'each_seeker_first_chat', 'always']);
       }
 
-      allow get: if isSignedIn();
+      allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isAdmin();
       allow update: if isAdmin() || isValidSelfUserUpdate();
       allow delete: if isAdmin();
 
       // User Settings Subcollection
+      match /settings/preferences {
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow write: if isAdmin();
+      }
+
+      match /settings/verification {
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow write: if isAdmin();
+      }
+
+      match /settings/alert_history {
+        allow read, write: if isAdmin();
+      }
+
       match /settings/{settingId} {
-        allow read, write: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+        allow write: if isAdmin();
       }
     }
 
@@ -103,23 +128,7 @@ service cloud.firestore {
       }
 
       allow list, get: if isSignedIn();
-      allow create: if isSignedIn() && isValidProperty(incoming());
-      allow update: if isSignedIn() && (
-                      (existing().ownerId == request.auth.uid && incoming().ownerId == existing().ownerId && 
-                       incoming().diff(existing()).affectedKeys().hasOnly([
-                         'ownerId', 'title', 'description', 'price', 'location', 'status', 'features', 
-                         'images', 'teaserImageId', 'completion', 'updatedAt', 'isActive',
-                         'address', 'city', 'neighborhood', 'displayLat', 'displayLng', 
-                         'displayRadius', 'minPrice', 'maxPrice', 'priceType', 'priceDescription',
-                         'createdAt', 'maxInquiries', 'currentInquiries', 'monthlyAvailability', 'highlightWeeks'
-                       ])) ||
-                       // Allow seekers to update inquiries count and auto-pause
-                       (incoming().diff(existing()).affectedKeys().hasAny(['currentInquiries', 'status']) && 
-                        incoming().diff(existing()).affectedKeys().hasOnly(['currentInquiries', 'status', 'updatedAt']) &&
-                        (Math.abs(incoming().currentInquiries - existing().currentInquiries) == 1)) ||
-                      isAdmin()
-                    );
-      allow delete: if isSignedIn() && (existing().ownerId == request.auth.uid || isAdmin());
+      allow create, update, delete: if isAdmin();
     }
 
     // Provider Profiles (providers)
@@ -132,8 +141,7 @@ service cloud.firestore {
       
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create, update: if isSignedIn() && request.auth.uid == providerId && isValidProviderProfile(incoming());
-      allow delete: if isAdmin() || request.auth.uid == providerId;
+      allow create, update, delete: if isAdmin();
     }
 
     // Seeker profiles
@@ -150,8 +158,7 @@ service cloud.firestore {
       
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isSignedIn() && isValidSeekerProfile(incoming()) && profileId == request.auth.uid;
-      allow update: if isSignedIn() && request.auth.uid == profileId && isValidSeekerProfile(incoming());
+      allow create, update, delete: if isAdmin();
     }
 
     // AI Settings
@@ -178,20 +185,7 @@ service cloud.firestore {
                     isAdmin()
                   );
       allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidMatch(incoming()) && 
-                    incoming().seekerId == request.auth.uid;
-      allow update: if isSignedIn() && (
-                      isAdmin() ||
-                      (
-                        (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid) &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['translations']) &&
-                        incoming().seekerId == existing().seekerId &&
-                        incoming().providerId == existing().providerId &&
-                        incoming().propertyId == existing().propertyId &&
-                        incoming().report == existing().report &&
-                        incoming().createdAt == existing().createdAt
-                      )
-                    );
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -199,12 +193,7 @@ service cloud.firestore {
     match /makelaar_reports/{reportId} {
       allow get: if isSignedIn();
       allow list: if isAdmin();
-      allow create: if isSignedIn() &&
-                    reportId == incoming().propertyId &&
-                    isValidId(incoming().providerId) &&
-                    incoming().report is string &&
-                    incoming().report.size() <= 50000;
-      allow update: if isAdmin();
+      allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -246,14 +235,7 @@ service cloud.firestore {
 
       allow get: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
-      
-      allow create: if isSignedIn() && isValidChat(incoming()) && (
-                      incoming().seekerId == request.auth.uid || isAdmin()
-                    );
-      
-      allow update: if isSignedIn() && isValidChat(incoming()) && (
-        (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid) || isAdmin()
-      );
+      allow create, update, delete: if isAdmin();
     }
 
     // Admin Messages rules

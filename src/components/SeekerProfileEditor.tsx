@@ -9,8 +9,8 @@ import {
   Search, Map as MapIcon, ChevronUp, ChevronDown, LocateFixed, Plus as PlusIcon, Minus, Eye, Layers, Maximize2
 } from 'lucide-react';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { grantCompletionBonus } from '../services/userService';
+import { doc, getDoc } from 'firebase/firestore';
+import { grantCompletionBonus, saveSeekerProfile } from '../services/userService';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
@@ -412,14 +412,13 @@ export default function SeekerProfileEditor({ onClose, onComplete }: { onClose: 
         has_completed_minimal: calcMinimalCompletion() === 100,
         has_completed_extended: complete,
         extended_completion_percentage: calcExtendedCompletion(),
-        updatedAt: serverTimestamp()
       };
       const isComplete = calcMinimalCompletion() === 100;
-      await setDoc(doc(db, 'seeker_profiles', auth.currentUser.uid), data, { merge: true });
-      await setDoc(doc(db, 'users', auth.currentUser.uid), {
-        hasProfile: true,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await saveSeekerProfile(data as Record<string, unknown>, {
+        language: i18n.language,
+        theme,
+        unit,
+      });
 
       if (isComplete) {
         await grantCompletionBonus('seeker');

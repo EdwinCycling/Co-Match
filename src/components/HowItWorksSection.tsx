@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { HowItWorksModal } from './HowItWorksModal';
 import { ArrowRight, HelpingHand, Search, Home, ShieldCheck } from 'lucide-react';
+
+const HowItWorksModal = lazy(() =>
+  import('./HowItWorksModal').then((module) => ({ default: module.HowItWorksModal }))
+);
 
 export const HowItWorksSection: React.FC = () => {
   const { t } = useTranslation();
@@ -70,11 +73,13 @@ export const HowItWorksSection: React.FC = () => {
         </div>
       </div>
 
-      <HowItWorksModal 
-        isOpen={modalOpen} 
-        onClose={() => setModalOpen(false)} 
-        initialTab={initialTab}
-      />
+      <Suspense fallback={null}>
+        <HowItWorksModal 
+          isOpen={modalOpen} 
+          onClose={() => setModalOpen(false)} 
+          initialTab={initialTab}
+        />
+      </Suspense>
     </section>
   );
 };

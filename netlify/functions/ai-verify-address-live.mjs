@@ -1,4 +1,4 @@
-import { createGeminiClient, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, enforceRateLimit, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, syncPublicProfile, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -9,6 +9,13 @@ export const handler = async (event) => {
 
   return withErrorHandling(async () => {
     const user = await requireUser(event);
+    await enforceRateLimit({
+      scope: 'ai-verify-address-live',
+      identifier: user.uid,
+      maxRequests: 5,
+      windowMs: 10 * 60 * 1000,
+      errorMessage: 'Error: Too many AI address verification requests. Please try again in a few minutes.',
+    });
     const { imageDataUrl, expectedAddress, expectedName } = parseBody(event);
 
     if (!imageDataUrl || !expectedAddress || !expectedName) {
@@ -87,6 +94,7 @@ Expected Address: ${expectedAddress}`;
     }
 
     await db.collection('users').doc(user.uid).set(userUpdate, { merge: true });
+    await syncPublicProfile(db, user.uid);
 
     return json(200, result);
   });

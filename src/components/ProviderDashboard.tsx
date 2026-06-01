@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, startTransition, Suspense, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -57,26 +57,8 @@ import {
   Calendar,
   AlertTriangle
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMap, Circle, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
 import { LANGUAGES_SORTED } from '../data/languages';
-import { ProviderProfileModal } from './ProviderProfileModal';
 import { ExpertHub } from './ExpertHub';
-
-// Fix for default marker icons in Leaflet with Vite
-// Using CDN URLs to avoid local asset resolution issues in linting
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-L.Marker.prototype.options.icon = DefaultIcon;
 import { toast } from 'react-hot-toast';
 import { db, auth, handleFirestoreError, OperationType, storage } from '../lib/firebase';
 import { 
@@ -84,17 +66,21 @@ import {
   query, 
   where, 
   getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
   doc, 
-  serverTimestamp,
   onSnapshot
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatDate } from '../lib/formatters';
-import { grantCompletionBonus } from '../services/userService';
+import { grantCompletionBonus, saveProviderProfile } from '../services/userService';
+import {
+  createProperty,
+  deleteProperty,
+  duplicateProperty,
+  increasePropertyLimit,
+  reactivateProperty,
+  updateProperty,
+} from '../services/propertyService';
 
 export interface PropertyImage {
   id: string;
@@ -154,14 +140,22 @@ const validateText = (text: string, t: any) => {
 };
 
 import { useCurrencyConverter } from '../hooks/useCurrencyConverter';
-import ProviderChatsModal from './ProviderChatsModal';
-import { VerificationModal } from './VerificationModal';
-import PropertyLimitModal from './PropertyLimitModal';
-import PropertyBundleModal from './PropertyBundleModal';
 import { TrustBadge, TrustPopup } from './TrustBadge';
 import { Linkedin, ExternalLink } from 'lucide-react';
 import { getDoc } from 'firebase/firestore';
-import AvailabilityHubModal from './AvailabilityHubModal';
+
+const ProviderChatsModal = lazy(() => import('./ProviderChatsModal'));
+const PropertyLimitModal = lazy(() => import('./PropertyLimitModal'));
+const PropertyBundleModal = lazy(() => import('./PropertyBundleModal'));
+const AvailabilityHubModal = lazy(() => import('./AvailabilityHubModal'));
+const ProviderLocationMap = lazy(() => import('./ProviderLocationMap'));
+const ProviderImageCropperModal = lazy(() => import('./ProviderImageCropperModal'));
+const ProviderProfileModal = lazy(() =>
+  import('./ProviderProfileModal').then((module) => ({ default: module.ProviderProfileModal }))
+);
+const VerificationModal = lazy(() =>
+  import('./VerificationModal').then((module) => ({ default: module.VerificationModal }))
+);
 
 const ReactivationAlert: React.FC<{ 
   properties: Property[], 
@@ -292,6 +286,24 @@ export default function ProviderDashboard() {
   const [showBundleModal, setShowBundleModal] = useState(false);
   const [showAvailabilityHub, setShowAvailabilityHub] = useState(false);
 
+  const openPropertyEditor = (property: Property) => {
+    startTransition(() => {
+      setEditingProp(property);
+    });
+  };
+
+  const openProviderProfile = () => {
+    startTransition(() => {
+      setShowProfileModal(true);
+    });
+  };
+
+  const openProviderChats = (property: Property) => {
+    startTransition(() => {
+      setChattingProp(property);
+    });
+  };
+
   // Ref to hold properties for the event listener
   const latestPropertiesRef = React.useRef(properties);
   React.useEffect(() => {
@@ -303,7 +315,7 @@ export default function ProviderDashboard() {
       const { propertyId, chatId } = e.detail;
       const prop = latestPropertiesRef.current.find(p => p.id === propertyId);
       if (prop) {
-        setChattingProp(prop);
+        openProviderChats(prop);
         if (chatId) {
           // Tell ProviderChatsModal to select this chat via custom event since we don't want to refactor props
           setTimeout(() => {
@@ -411,7 +423,7 @@ export default function ProviderDashboard() {
     fetchProfile();
 
     const handleOpenProfile = () => {
-      setShowProfileModal(true);
+      openProviderProfile();
     };
     window.addEventListener('open-provider-profile', handleOpenProfile);
     window.addEventListener('refresh-provider-properties', fetchProperties);
@@ -438,12 +450,7 @@ export default function ProviderDashboard() {
     window.dispatchEvent(new Event('pwa-provider-action'));
 
     try {
-      const { setDoc, doc, getDoc, serverTimestamp } = await import('firebase/firestore');
-      await setDoc(doc(db, 'providers', auth.currentUser.uid), {
-        ...data,
-        updatedAt: serverTimestamp(),
-        createdAt: providerProfile?.createdAt || serverTimestamp()
-      }, { merge: true });
+      await saveProviderProfile(data);
       
       // Profile completion credits are granted server-side and only once.
       const isComplete = !!(data && data.firstName);
@@ -452,7 +459,7 @@ export default function ProviderDashboard() {
       }
 
       // Update local state and trigger refresh
-      setProviderProfile({ ...data });
+      setProviderProfile({ ...providerProfile, ...data });
       await fetchProfile();
       await fetchProperties();
       
@@ -500,35 +507,15 @@ export default function ProviderDashboard() {
     const isProfileComplete = !!(providerProfile && providerProfile.firstName);
     
     if (!isProfileComplete && !force) {
-      setShowProfileModal(true);
+      openProviderProfile();
       return;
     }
     
     try {
-      const newPropData = {
-        ownerId: auth.currentUser.uid,
-        title: '',
-        address: '',
-        city: '',
-        neighborhood: '',
-        location: '',
-        price: 0,
-        status: 'available',
-        maxInquiries: 10,
-        currentInquiries: 0,
-        isActive: false,
-        deposit: 0,
-        features: {
-          is_indefinite: true
-        },
-        completion: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      const docRef = await addDoc(collection(db, 'properties'), newPropData);
-      const newProp = { id: docRef.id, ...newPropData } as Property;
+      const response = await createProperty();
+      const newProp = { id: response.id, ...(response.property || {}) } as Property;
       setProperties([newProp, ...properties]);
-      setEditingProp(newProp);
+      openPropertyEditor(newProp);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'properties');
     }
@@ -538,10 +525,7 @@ export default function ProviderDashboard() {
     // Track action for PWA install prompt logic
     window.dispatchEvent(new Event('pwa-provider-action'));
     try {
-      await updateDoc(doc(db, 'properties', p.id), {
-        status: 'available',
-        updatedAt: serverTimestamp()
-      });
+      await reactivateProperty(p.id);
       fetchProperties();
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `properties/${p.id}`);
@@ -552,12 +536,7 @@ export default function ProviderDashboard() {
     // Track action for PWA install prompt logic
     window.dispatchEvent(new Event('pwa-provider-action'));
     try {
-      const newMax = Math.min(50, (p.maxInquiries || 10) + 10);
-      await updateDoc(doc(db, 'properties', p.id), {
-        maxInquiries: newMax,
-        status: 'available',
-        updatedAt: serverTimestamp()
-      });
+      await increasePropertyLimit(p.id);
       fetchProperties();
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `properties/${p.id}`);
@@ -567,7 +546,7 @@ export default function ProviderDashboard() {
   const handleDeleteProperty = async () => {
     if (!deletingPropId) return;
     try {
-      await deleteDoc(doc(db, 'properties', deletingPropId));
+      await deleteProperty(deletingPropId);
       setProperties(properties.filter(p => p.id !== deletingPropId));
       setDeletingPropId(null);
     } catch (error) {
@@ -597,9 +576,7 @@ export default function ProviderDashboard() {
         location: '',
         features: {},
         images: [],
-        teaserImageId: '',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        teaserImageId: ''
       };
 
       if (selectedSections.includes('basic')) {
@@ -675,8 +652,8 @@ export default function ProviderDashboard() {
 
       newPropData.completion = calculateCompletion(newPropData);
 
-      const docRef = await addDoc(collection(db, 'properties'), newPropData);
-      setProperties([{ id: docRef.id, ...newPropData }, ...properties]);
+      const response = await duplicateProperty(newPropData);
+      setProperties([{ id: response.id, ...(response.property || {}) } as Property, ...properties]);
       setCopyingProp(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'properties');
@@ -743,7 +720,13 @@ export default function ProviderDashboard() {
               <p className="text-on-surface-variant font-medium text-sm">{t('dash.new_messages_desc', 'Je hebt {{count}} nieuwe ongelezen bericht(en) van geïnteresseerde zoekers.', { count: totalUnread })}</p>
             </div>
           </div>
-          <p className="hidden md:block text-xs font-black uppercase tracking-widest text-primary italic">Bekijk details hieronder</p>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('open-provider-all-chats'))}
+            className="shrink-0 px-6 py-3 bg-primary text-on-primary rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+          >
+            {t('dash.open_chat_details', 'Open chat details')}
+          </button>
         </motion.div>
       )}
 
@@ -767,7 +750,7 @@ export default function ProviderDashboard() {
           </div>
           <button 
             onClick={() => {
-              setShowProfileModal(true);
+              openProviderProfile();
             }}
             className="relative z-10 bg-white text-primary px-8 md:px-10 py-4 md:py-5 rounded-2xl font-bold shadow-lg flex items-center gap-3 hover:scale-105 active:scale-95 transition-all flex-shrink-0 group mx-auto md:mx-0"
           >
@@ -813,7 +796,7 @@ export default function ProviderDashboard() {
                   prop={prop} 
                   actualInquiries={getActualInquiries(prop.id)}
                   chatStats={{ totalChats, unreadCount, unreadAudioCount }}
-                  onEdit={() => setEditingProp(prop)} 
+                  onEdit={() => openPropertyEditor(prop)} 
                   onDelete={() => setDeletingPropId(prop.id)} 
                   onCopy={() => {
                     const maxProperties = userData?.max_properties || 3;
@@ -823,7 +806,7 @@ export default function ProviderDashboard() {
                     }
                     setCopyingProp(prop);
                   }}
-                  onChat={() => setChattingProp(prop)}
+                  onChat={() => openProviderChats(prop)}
                 />
               );
             })}
@@ -943,10 +926,12 @@ export default function ProviderDashboard() {
       {/* Provider Chats Modal */}
       <AnimatePresence>
         {chattingProp && (
-          <ProviderChatsModal
-            property={chattingProp}
-            onClose={() => setChattingProp(null)}
-          />
+          <Suspense fallback={null}>
+            <ProviderChatsModal
+              property={chattingProp}
+              onClose={() => setChattingProp(null)}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
@@ -970,26 +955,32 @@ export default function ProviderDashboard() {
       {/* Provider Profile Modal */}
       <AnimatePresence>
         {showProfileModal && (
-          <ProviderProfileModal 
-            onClose={() => setShowProfileModal(false)}
-            onSave={handleSaveProfile}
-            existingProfile={providerProfile}
-            createdAt={auth.currentUser?.metadata.creationTime}
-            lastLogin={auth.currentUser?.metadata.lastSignInTime}
-            userVerificationLevel={userData?.verificationLevel || 1}
-            onOpenVerification={() => setShowVerificationModal(true)}
-          />
+          <Suspense fallback={null}>
+            <ProviderProfileModal 
+              onClose={() => setShowProfileModal(false)}
+              onSave={handleSaveProfile}
+              existingProfile={providerProfile}
+              createdAt={auth.currentUser?.metadata.creationTime}
+              lastLogin={auth.currentUser?.metadata.lastSignInTime}
+              userVerificationLevel={userData?.verificationLevel || 1}
+              onOpenVerification={() => setShowVerificationModal(true)}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 
-      <VerificationModal 
-        isOpen={showVerificationModal} 
-        onClose={() => setShowVerificationModal(false)} 
-        userVerificationLevel={userData?.verificationLevel || 1} 
-        onVerificationUpdate={(lvl) => setUserData({ ...userData, verificationLevel: Math.max(userData?.verificationLevel || 1, lvl) })} 
-        userEmail={auth.currentUser?.email || ''} 
-        userName={providerProfile?.firstName ? `${providerProfile.firstName} ${providerProfile.lastName || ''}`.trim() : ''} 
-      />
+      {showVerificationModal && (
+        <Suspense fallback={null}>
+          <VerificationModal 
+            isOpen={showVerificationModal} 
+            onClose={() => setShowVerificationModal(false)} 
+            userVerificationLevel={userData?.verificationLevel || 1} 
+            onVerificationUpdate={(lvl) => setUserData({ ...userData, verificationLevel: Math.max(userData?.verificationLevel || 1, lvl) })} 
+            userEmail={auth.currentUser?.email || ''} 
+            userName={providerProfile?.firstName ? `${providerProfile.firstName} ${providerProfile.lastName || ''}`.trim() : ''} 
+          />
+        </Suspense>
+      )}
 
       <TrustPopup 
         isOpen={showTrustPopup} 
@@ -1004,23 +995,35 @@ export default function ProviderDashboard() {
         providerChats={providerChats}
       />
 
-      <PropertyLimitModal 
-        isOpen={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-      />
+      {showLimitModal && (
+        <Suspense fallback={null}>
+          <PropertyLimitModal 
+            isOpen={showLimitModal}
+            onClose={() => setShowLimitModal(false)}
+          />
+        </Suspense>
+      )}
 
-      <PropertyBundleModal 
-        isOpen={showBundleModal}
-        onClose={() => setShowBundleModal(false)}
-        currentLimit={userData?.max_properties || 3}
-      />
+      {showBundleModal && (
+        <Suspense fallback={null}>
+          <PropertyBundleModal 
+            isOpen={showBundleModal}
+            onClose={() => setShowBundleModal(false)}
+            currentLimit={userData?.max_properties || 3}
+          />
+        </Suspense>
+      )}
 
-      <AvailabilityHubModal 
-        isOpen={showAvailabilityHub}
-        onClose={() => setShowAvailabilityHub(false)}
-        properties={properties}
-        onPropertiesUpdated={fetchProperties}
-      />
+      {showAvailabilityHub && (
+        <Suspense fallback={null}>
+          <AvailabilityHubModal 
+            isOpen={showAvailabilityHub}
+            onClose={() => setShowAvailabilityHub(false)}
+            properties={properties}
+            onPropertiesUpdated={fetchProperties}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -1281,8 +1284,8 @@ const PropertyCard: React.FC<{
       {prop.status === 'paused' && (
         <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 md:w-32 md:h-32 pointer-events-none z-10">
           <div className="absolute top-4 -right-12 md:top-6 md:-right-10 bg-orange-500 text-white py-1 md:py-1.5 w-[140px] md:w-[160px] text-center transform rotate-45 shadow-lg flex flex-col items-center justify-center">
-            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest leading-none">{t('dash.pause', 'Pauze')}</span>
-            <span className="text-[6px] md:text-[7px] font-medium leading-none opacity-90 mt-0.5 whitespace-nowrap">{t('dash.pause_desc', 'Kom later terug')}</span>
+            <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest leading-none">{t('property.paused.banner', 'Paused')}</span>
+            <span className="text-[6px] md:text-[7px] font-medium leading-none opacity-90 mt-0.5 whitespace-nowrap">{t('property.paused.banner_sub', 'Check back later')}</span>
           </div>
         </div>
       )}
@@ -1387,17 +1390,6 @@ const PropertyCard: React.FC<{
   );
 }
 
-function MapUpdater({ center, zoom = 13 }: { center: [number, number], zoom?: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.flyTo(center, zoom, {
-      duration: 1.5,
-      easeLinearity: 0.25
-    });
-  }, [center, map, zoom]);
-  return null;
-}
-
 function PropertyPreview({ prop, onClose }: { prop: Partial<Property>, onClose: () => void }) {
   const { t } = useTranslation();
   const currencyConverter = useCurrencyConverter();
@@ -1470,162 +1462,6 @@ function PropertyPreview({ prop, onClose }: { prop: Partial<Property>, onClose: 
           </div>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-function ImageCropperModal({ 
-  src, 
-  onComplete, 
-  onCancel 
-}: { 
-  src: string, 
-  onComplete: (croppedDataUrl: string) => void, 
-  onCancel: () => void 
-}) {
-  const { t } = useTranslation();
-  const [crop, setCrop] = useState<Crop>();
-  const [imgRef, setImgRef] = useState<HTMLImageElement | null>(null);
-  const [aspect, setAspect] = useState<number | undefined>(1.5); // Default to 3:2
-
-  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    const initialCrop = centerCrop(
-      makeAspectCrop(
-        { unit: '%', width: 90 },
-        aspect || 1,
-        width,
-        height
-      ),
-      width,
-      height
-    );
-    setCrop(initialCrop);
-    setImgRef(e.currentTarget);
-  };
-
-  useEffect(() => {
-    if (imgRef) {
-      const { width, height } = imgRef;
-      const initialCrop = centerCrop(
-        makeAspectCrop(
-          { unit: '%', width: 90 },
-          aspect || 1,
-          width,
-          height
-        ),
-        width,
-        height
-      );
-      setCrop(initialCrop);
-    }
-  }, [aspect]);
-
-  const getCroppedImg = () => {
-    if (!imgRef || !crop) return;
-    const canvas = document.createElement('canvas');
-    const scaleX = imgRef.naturalWidth / imgRef.width;
-    const scaleY = imgRef.naturalHeight / imgRef.height;
-    
-    let pixelX, pixelY, pixelWidth, pixelHeight;
-    if (crop.unit === '%') {
-      pixelX = (crop.x / 100) * imgRef.naturalWidth;
-      pixelY = (crop.y / 100) * imgRef.naturalHeight;
-      pixelWidth = (crop.width / 100) * imgRef.naturalWidth;
-      pixelHeight = (crop.height / 100) * imgRef.naturalHeight;
-    } else {
-      pixelX = crop.x * scaleX;
-      pixelY = crop.y * scaleY;
-      pixelWidth = crop.width * scaleX;
-      pixelHeight = crop.height * scaleY;
-    }
-
-    canvas.width = Math.max(1, pixelWidth);
-    canvas.height = Math.max(1, pixelHeight);
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    ctx.drawImage(
-      imgRef,
-      pixelX,
-      pixelY,
-      pixelWidth,
-      pixelHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    onComplete(canvas.toDataURL('image/jpeg', 0.9));
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2.5rem] overflow-hidden max-w-3xl w-full shadow-2xl">
-        <div className="p-8 border-b border-outline flex justify-between items-center">
-          <div>
-             <h3 className="text-xl font-display font-black uppercase tracking-tight">{t('prop.editor.edit_photo', 'Foto bewerken')}</h3>
-             <p className="text-xs text-on-surface-variant font-medium mt-1">{t('prop.editor.edit_photo_desc', 'Versleep het kader om de foto bij te snijden')}</p>
-          </div>
-          <button onClick={onCancel} className="p-2 hover:bg-surface-container rounded-full transition-colors">
-            <X size={24} />
-          </button>
-        </div>
-        
-        <div className="px-8 py-4 bg-surface-container-low flex gap-4 overflow-x-auto border-b border-outline">
-           {[
-             { label: t('common.aspect_3_2', '3:2 (Standard)'), val: 1.5 },
-             { label: '4:3', val: 4/3 },
-             { label: t('common.aspect_1_1', '1:1 (Square)'), val: 1 },
-             { label: t('common.aspect_16_9', '16:9 (Wide)'), val: 16/9 },
-             { label: t('common.aspect_free', 'Free'), val: undefined }
-           ].map(opt => (
-             <button 
-               key={opt.label}
-               onClick={() => setAspect(opt.val)}
-               className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${aspect === opt.val ? 'bg-primary text-on-primary border-primary shadow-md' : 'bg-white border-outline hover:border-primary/50 text-on-surface-variant'}`}
-             >
-               {opt.label}
-             </button>
-           ))}
-        </div>
-
-        <div className="p-4 md:p-8 flex justify-center bg-surface-container-lowest custom-scrollbar" style={{ maxHeight: '60vh' }}>
-          <ReactCrop 
-            crop={crop} 
-            onChange={c => setCrop(c)} 
-            aspect={aspect}
-            keepSelection
-            className="flex items-center justify-center max-h-full"
-          >
-            <img 
-              src={src} 
-              onLoad={onImageLoad} 
-              style={{ maxHeight: 'calc(60vh - 4rem)' }}
-              className="max-w-full object-contain rounded-xl" 
-              alt="Crop target" 
-            />
-          </ReactCrop>
-        </div>
-        <div className="p-8 border-t border-outline flex justify-end gap-4 bg-white">
-          <button 
-            onClick={onCancel}
-            className="px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container transition-colors"
-          >
-            Annuleren
-          </button>
-          <button 
-            onClick={getCroppedImg}
-            className="px-10 py-3 bg-primary text-on-primary rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-          >
-            Opslaan
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1792,28 +1628,6 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  if (isMobile) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full relative">
-                <button 
-                    onClick={onClose}
-                    className="absolute top-4 right-4 p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors"
-                >
-                    <X size={24} />
-                </button>
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
-                    <ShieldAlert size={32} />
-                </div>
-                <h3 className="text-xl font-bold text-on-surface mb-2">{t('messages.mobile_not_available_title', 'Alleen op desktop')}</h3>
-                <p className="text-on-surface-variant">
-                    {t('messages.not_available_on_mobile', 'Het maken en onderhouden van woningen is nog niet beschikbaar op mobiele telefoons. Gebruik een desktop voor deze actie.')}
-                </p>
-            </div>
-        </div>
-    );
-  }
 
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -2138,7 +1952,6 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
         city: updatedFormData.city ? sanitizeText(updatedFormData.city) : '',
         neighborhood: updatedFormData.neighborhood ? sanitizeText(updatedFormData.neighborhood) : '',
         completion,
-        updatedAt: serverTimestamp()
       };
       
       const id = updateData.id;
@@ -2151,7 +1964,7 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
         throw new Error(t('prop.editor.payload_too_big', 'The advertisement has become too large (probably due to large photos). Remove some photos or use smaller files.'));
       }
       
-      await updateDoc(doc(db, 'properties', id), updateData);
+      await updateProperty(id, updateData as Record<string, unknown>);
       
       if (isStatusChange) {
         toast.success(t('prop.editor.status_saved', 'Status saved'));
@@ -2187,6 +2000,13 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
     });
   };
 
+  const persistPropertyImages = async (images: PropertyImage[], teaserImageId?: string) => {
+    await updateProperty(prop.id, {
+      images,
+      teaserImageId: teaserImageId || images[0]?.id,
+    });
+  };
+
   const handleFiles = async (files: FileList | File[]) => {
     const currentCount = (formData.images || []).length;
     const remainingCount = 15 - currentCount;
@@ -2210,6 +2030,8 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
     } else {
         // Multiple files or manual drop: process them directly
         setUploading(true);
+        let nextImages = [...(formData.images || [])];
+        let nextTeaserImageId = formData.teaserImageId;
         for (const file of filesToProcess) {
             if (!file.type.startsWith('image/')) continue;
             try {
@@ -2222,7 +2044,9 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                 const compressedUrl = await compressImage(dataUrl, 1200, 0.7);
                 const imageId = Math.random().toString(36).substr(2, 9);
                 const storageRef = ref(storage, `properties/${prop.id}/${imageId}.jpg`);
-                await uploadString(storageRef, compressedUrl, 'data_url');
+                await uploadString(storageRef, compressedUrl, 'data_url', {
+                  contentType: 'image/jpeg',
+                });
                 const downloadUrl = await getDownloadURL(storageRef);
                 
                 const newImage: PropertyImage = {
@@ -2232,14 +2056,26 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                     description: ''
                 };
                 
+                nextImages = [...nextImages, newImage];
+                nextTeaserImageId = nextTeaserImageId || newImage.id;
                 setFormData(prev => ({
                     ...prev,
-                    images: [...(prev.images || []), newImage],
-                    teaserImageId: prev.teaserImageId || newImage.id
+                    images: nextImages,
+                    teaserImageId: nextTeaserImageId,
                 }));
             } catch (err) {
                 console.error("Upload error:", err);
+                toast.error(t('prop.editor.image_upload_failed', 'Foto uploaden mislukt. Probeer het opnieuw.'));
             }
+        }
+        if (nextImages.length > (formData.images || []).length) {
+          try {
+            await persistPropertyImages(nextImages, nextTeaserImageId);
+            toast.success(t('prop.editor.image_saved', 'Foto opgeslagen'));
+          } catch (err) {
+            console.error('Error saving uploaded images:', err);
+            toast.error(t('prop.editor.image_upload_failed', 'Foto uploaden mislukt. Probeer het opnieuw.'));
+          }
         }
         setUploading(false);
     }
@@ -2256,43 +2092,55 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
   };
 
   const onCropComplete = async (croppedUrl: string) => {
+    const imageIdBeingEdited = editingImageId;
+    setCroppingImage(null);
+    setEditingImageId(null);
     setUploading(true);
     try {
       const compressedUrl = await compressImage(croppedUrl, 1200, 0.7);
-      
-      const imageId = editingImageId || Math.random().toString(36).substr(2, 9);
+
+      const imageId = imageIdBeingEdited || Math.random().toString(36).substr(2, 9);
       const storageRef = ref(storage, `properties/${prop.id}/${imageId}.jpg`);
-      
-      // Upload to Firebase Storage
-      await uploadString(storageRef, compressedUrl, 'data_url');
+
+      await uploadString(storageRef, compressedUrl, 'data_url', {
+        contentType: 'image/jpeg',
+      });
       const downloadUrl = await getDownloadURL(storageRef);
-      
-      if (editingImageId) {
-        const images = (formData.images || []).map(img => 
-          img.id === editingImageId ? { ...img, url: downloadUrl } : img
-        );
-        setFormData({ ...formData, images });
-      } else {
-        const newImage: PropertyImage = {
-          id: imageId,
-          url: downloadUrl,
-          category: 'interior',
-          description: ''
+
+      let nextImages: PropertyImage[] = [];
+      let nextTeaserImageId: string | undefined;
+
+      setFormData((prev) => {
+        if (imageIdBeingEdited) {
+          nextImages = (prev.images || []).map((img) =>
+            img.id === imageIdBeingEdited ? { ...img, url: downloadUrl } : img
+          );
+          nextTeaserImageId = prev.teaserImageId;
+        } else {
+          const newImage: PropertyImage = {
+            id: imageId,
+            url: downloadUrl,
+            category: 'interior',
+            description: '',
+          };
+          nextImages = [...(prev.images || []), newImage];
+          nextTeaserImageId = prev.teaserImageId || newImage.id;
+        }
+
+        return {
+          ...prev,
+          images: nextImages,
+          teaserImageId: nextTeaserImageId,
         };
-        const images = [...(formData.images || []), newImage];
-        setFormData({ 
-          ...formData, 
-          images,
-          teaserImageId: formData.teaserImageId || newImage.id
-        });
-      }
+      });
+
+      await persistPropertyImages(nextImages, nextTeaserImageId);
+      toast.success(t('prop.editor.image_saved', 'Foto opgeslagen'));
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Er is een fout opgetreden bij het uploaden van de afbeelding.');
+      toast.error(t('prop.editor.image_upload_failed', 'Foto uploaden mislukt. Probeer het opnieuw.'));
     } finally {
       setUploading(false);
-      setCroppingImage(null);
-      setEditingImageId(null);
     }
   };
 
@@ -2352,6 +2200,28 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
     }
   }, []);
 
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
+        <div className="bg-white rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 text-primary">
+            <ShieldAlert size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-on-surface mb-2">{t('messages.mobile_not_available_title', 'Alleen op desktop')}</h3>
+          <p className="text-on-surface-variant">
+            {t('messages.not_available_on_mobile', 'Het maken en onderhouden van woningen is nog niet beschikbaar op mobiele telefoons. Gebruik een desktop voor deze actie.')}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const handleStatusChange = async (newStatus: 'available' | 'paused', newIsActive: boolean) => {
     if (newIsActive && getShortCompletion(formData) < 100) {
       alert('Je kunt de woning pas activeren als de Snelle Start 100% voltooid is.');
@@ -2368,11 +2238,10 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
       const updateData = {
         ...updatedData,
         completion,
-        updatedAt: serverTimestamp()
       };
       const id = updateData.id;
       delete updateData.id;
-      await updateDoc(doc(db, 'properties', id), updateData);
+      await updateProperty(id, updateData as Record<string, unknown>);
       
       toast.success(t('prop.editor.status_updated'));
     } catch (error) {
@@ -2580,8 +2449,7 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                         onDeletePrompt();
                       } else if (window.confirm(t('dash.confirm_delete_msg', 'Weet je zeker dat je deze woning wilt verwijderen? Dit kan niet ongedaan worden gemaakt.'))) {
                         try {
-                          const { deleteDoc, doc } = await import('firebase/firestore');
-                          await deleteDoc(doc(db, 'properties', prop.id));
+                          await deleteProperty(prop.id);
                           onClose();
                         } catch (error) {
                           handleFirestoreError(error, OperationType.DELETE, `properties/${prop.id}`);
@@ -2638,10 +2506,16 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
             </div>
 
             <div className="space-y-3">
-              {visibilityCategories.map(cat => (
-                <button 
+              {visibilityCategories.map(cat => {
+                const isHidden = visibilitySettings[cat.id] === false;
+                return (
+                <button
+                  type="button"
                   key={cat.id}
-                  onClick={() => setVisibilitySettings(prev => ({ ...prev, [cat.id]: !prev[cat.id] }))}
+                  onClick={() => setVisibilitySettings((prev) => ({
+                    ...prev,
+                    [cat.id]: prev[cat.id] === false ? true : false,
+                  }))}
                   className="w-full flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border-2 border-transparent hover:border-primary/20 hover:bg-white transition-all group text-left shadow-sm"
                 >
                   <div className="flex items-center gap-4">
@@ -2652,16 +2526,17 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                   </div>
                   <div 
                     className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
-                      visibilitySettings[cat.id] === false 
+                      isHidden
                         ? 'bg-error/10 text-error border border-error/20' 
                         : 'bg-success/10 text-success border border-success/20'
                     }`}
                   >
-                    {visibilitySettings[cat.id] === false ? <EyeOff size={14} /> : <Eye size={14} />}
-                    {visibilitySettings[cat.id] === false ? t('prop.editor.visibility.toggle_off') : t('prop.editor.visibility.toggle_on')}
+                    {isHidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {isHidden ? t('prop.editor.visibility.toggle_off') : t('prop.editor.visibility.toggle_on')}
                   </div>
                 </button>
-              ))}
+              );
+              })}
             </div>
           </div>
 
@@ -2999,7 +2874,10 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
-        onClick={onClose}
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return;
+          onClose();
+        }}
       >
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}
@@ -3447,21 +3325,17 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                     </div>
 
                     <div className="h-[500px] bg-surface-container rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl relative z-0 group">
-                      <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={true}>
-                        <TileLayer
-                          attribution='&copy; OpenStreetMap contributors'
-                          url={mapType === 'street' 
-                            ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                          }
+                      <Suspense fallback={<div className="h-full w-full animate-pulse bg-surface-container-low" />}>
+                        <ProviderLocationMap
+                          center={mapCenter}
+                          radius={formData.displayRadius || 500}
+                          mapType={mapType}
+                          zoom={13}
+                          zoomControl={true}
+                          fillOpacity={0.25}
+                          weight={2}
                         />
-                        <Circle 
-                          center={mapCenter} 
-                          radius={formData.displayRadius || 500} 
-                          pathOptions={{ color: 'var(--color-primary)', fillColor: 'var(--color-primary)', fillOpacity: 0.25, weight: 2 }}
-                        />
-                        <MapUpdater center={mapCenter} zoom={14} />
-                      </MapContainer>
+                      </Suspense>
                       
                       <div className="absolute top-6 left-16 right-6 flex justify-between items-start pointer-events-none">
                          <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50 pointer-events-auto">
@@ -5571,21 +5445,17 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
               </div>
 
               <div className="flex-grow">
-                <MapContainer center={mapCenter} zoom={15} style={{ height: '100%', width: '100%' }} zoomControl={true}>
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url={mapType === 'street' 
-                      ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                    }
+                <Suspense fallback={<div className="h-full w-full animate-pulse bg-surface-container-low" />}>
+                  <ProviderLocationMap
+                    center={mapCenter}
+                    radius={formData.displayRadius || 500}
+                    mapType={mapType}
+                    zoom={15}
+                    zoomControl={true}
+                    fillOpacity={0.2}
+                    weight={2}
                   />
-                  <Circle 
-                    center={mapCenter} 
-                    radius={formData.displayRadius || 500} 
-                    pathOptions={{ color: 'var(--color-primary)', fillColor: 'var(--color-primary)', fillOpacity: 0.2 }}
-                  />
-                  <MapUpdater center={mapCenter} />
-                </MapContainer>
+                </Suspense>
               </div>
 
               <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-8 py-4 rounded-2xl border border-outline shadow-2xl z-[2000]">
@@ -5609,11 +5479,13 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
       
       <AnimatePresence>
         {croppingImage && (
-          <ImageCropperModal 
-            src={croppingImage}
-            onCancel={() => setCroppingImage(null)}
-            onComplete={onCropComplete}
-          />
+          <Suspense fallback={null}>
+            <ProviderImageCropperModal 
+              src={croppingImage}
+              onCancel={() => setCroppingImage(null)}
+              onComplete={onCropComplete}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </motion.div>

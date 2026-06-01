@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
@@ -17,14 +17,18 @@ import {
   User
 } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
-import { doc, updateDoc, arrayUnion, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { generateMatchReport, getExistingMatch, generateMakelaarReport, getExistingMakelaarReport } from '../services/matchService';
 import { deductCredits } from '../services/creditService';
+import { grantSeekerAccess } from '../services/seekerProfileService';
 import { toast } from 'react-hot-toast';
 import { CREDIT_COSTS } from '../constants';
 import { TrustBadge, TrustPopup } from './TrustBadge';
-import { PropertySurroundings } from './PropertySurroundings';
-import MakelaarReportModal from './MakelaarReportModal';
+
+const PropertySurroundings = lazy(() =>
+  import('./PropertySurroundings').then((module) => ({ default: module.PropertySurroundings }))
+);
+const MakelaarReportModal = lazy(() => import('./MakelaarReportModal'));
 
 interface PropertyImage {
   id: string;
@@ -190,13 +194,9 @@ export default function InterestWorkflowModal({
         return;
       }
 
-      // Opslaan in database dat deze woning volledig is ontgrendeld (en gelijk favoriet maken)
-      const seekerRef = doc(db, 'seeker_profiles', auth.currentUser.uid);
-      await updateDoc(seekerRef, {
-        unlocked_all_options: arrayUnion(prop.id),
-        unlocked_details: arrayUnion(prop.id),
-        unlocked_matches: arrayUnion(prop.id),
-        favorites: arrayUnion(prop.id)
+      await grantSeekerAccess(prop.id, {
+        unlockAllOptions: true,
+        favorite: true,
       });
 
       setLocalUnlocked(true);
@@ -736,7 +736,9 @@ export default function InterestWorkflowModal({
               transition={{ delay: 0.1 }}
               className="w-full"
             >
-              <PropertySurroundings lat={prop.displayLat} lon={prop.displayLng} />
+              <Suspense fallback={null}>
+                <PropertySurroundings lat={prop.displayLat} lon={prop.displayLng} />
+              </Suspense>
             </motion.div>
           )}
 
@@ -859,11 +861,13 @@ export default function InterestWorkflowModal({
 
         <AnimatePresence>
            {showMakelaarModal && existingMakelaarReport && (
-              <MakelaarReportModal 
-                report={existingMakelaarReport.report}
-                property={prop}
-                onClose={() => setShowMakelaarModal(false)}
-              />
+              <Suspense fallback={null}>
+                <MakelaarReportModal 
+                  report={existingMakelaarReport.report}
+                  property={prop}
+                  onClose={() => setShowMakelaarModal(false)}
+                />
+              </Suspense>
            )}
         </AnimatePresence>
 

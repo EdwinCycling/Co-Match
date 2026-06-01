@@ -1,4 +1,4 @@
-import { createGeminiClient, ensurePost, getDb, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, enforceRateLimit, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -8,7 +8,14 @@ export const handler = async (event) => {
   if (postResponse) return postResponse;
 
   return withErrorHandling(async () => {
-    await requireUser(event);
+    const user = await requireUser(event);
+    await enforceRateLimit({
+      scope: 'ai-makelaar-report',
+      identifier: user.uid,
+      maxRequests: 5,
+      windowMs: 10 * 60 * 1000,
+      errorMessage: 'Error: Too many AI makelaar report requests. Please try again in a few minutes.',
+    });
     const { propertyId, language = 'nl' } = parseBody(event);
 
     if (!propertyId || typeof propertyId !== 'string' || propertyId.length > 128) {
@@ -16,6 +23,16 @@ export const handler = async (event) => {
     }
 
     const db = getDb();
+    const existingReportSnap = await db.collection('makelaar_reports').doc(propertyId).get();
+    if (existingReportSnap.exists) {
+      return json(200, {
+        reportDocument: {
+          id: existingReportSnap.id,
+          ...existingReportSnap.data(),
+        },
+      });
+    }
+
     const [aiSettingsSnap, propertySnap] = await Promise.all([
       db.collection('ai_settings').doc('matching').get(),
       db.collection('properties').doc(propertyId).get(),
@@ -66,8 +83,25 @@ ${JSON.stringify(providerData || {}, null, 2)}
       },
     });
 
+    const reportText = response.text || 'Er kon geen makelaarsrapport worden gegenereerd.';
+    const reportData = {
+      propertyId,
+      providerId: propertyData.ownerId || '',
+      report: reportText,
+      language,
+      createdAt: serverTimestamp(),
+    };
+
+    await db.collection('makelaar_reports').doc(propertyId).set(reportData, { merge: true });
+
     return json(200, {
-      report: response.text || 'Er kon geen makelaarsrapport worden gegenereerd.',
+      reportDocument: {
+        id: propertyId,
+        propertyId,
+        providerId: propertyData.ownerId || '',
+        report: reportText,
+        language,
+      },
     });
   });
 };

@@ -1,16 +1,18 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "260526.1",
+  "version": "1.260101.1",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev": "vite --host 0.0.0.0 --port 3000 --strictPort",
+    "dev:netlify-target": "vite --host 0.0.0.0 --port 3001 --strictPort",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 3001",
-    "netlify:dev": "npx netlify dev --port 3001 --target-port 5173 --functions netlify/functions",
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "netlify:dev": "npx netlify dev --port 3000 --target-port 3001 --command \"npm run dev:netlify-target\" --functions netlify/functions",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "typecheck": "tsc --noEmit",
-    "lint": "npm run typecheck"
+    "lint": "npm run typecheck",
+    "admin:claim": "tsx set-admin-claim.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

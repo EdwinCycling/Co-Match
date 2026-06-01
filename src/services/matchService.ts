@@ -1,5 +1,5 @@
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { checkRateLimit } from "../lib/rateLimit";
 import { postToServerFunction } from "../lib/serverApi";
 
@@ -20,8 +20,6 @@ export async function getExistingMatch(seekerId: string, propertyId: string) {
 
 export async function generateMatchReport(seekerId: string, propertyId: string, language: string = 'nl') {
   try {
-    const matchId = `${seekerId}_${propertyId}`;
-    
     // First check if it already exists to prevent duplicate generation
     const existing = await getExistingMatch(seekerId, propertyId);
     if (existing) {
@@ -31,36 +29,17 @@ export async function generateMatchReport(seekerId: string, propertyId: string, 
       throw new Error("Je hebt het maximum aantal AI-rapporten voor vandaag bereikt (max 5 per dag). Probeer het morgen weer.");
     }
 
-    const { report } = await postToServerFunction<{ report: string }>('ai-match-report', {
+    const { match } = await postToServerFunction<{ match: any }>('ai-match-report', {
       seekerId,
       propertyId,
       language
     });
 
-    const reportText = report || "Er kon geen rapport worden gegenereerd.";
-
-    const propertySnap = await getDoc(doc(db, 'properties', propertyId));
-    if (!propertySnap.exists()) {
-      throw new Error("Woning gegevens ontbreken.");
+    if (!match) {
+      throw new Error("Er kon geen rapport worden gegenereerd.");
     }
-    const propertyData = propertySnap.data();
 
-    // 5. Save Match result
-    const matchData = {
-      seekerId,
-      propertyId,
-      providerId: propertyData.ownerId,
-      report: reportText,
-      language: language,
-      createdAt: serverTimestamp(),
-    };
-
-    await setDoc(doc(db, 'matches', matchId), matchData);
-    
-    return {
-      id: matchId,
-      ...matchData
-    };
+    return match;
 
   } catch (error) {
     console.error("Match generation error:", error);
@@ -76,18 +55,11 @@ export async function translateMatchReport(existingMatch: any, targetLanguage: s
     }
 
     const { translatedText } = await postToServerFunction<{ translatedText: string }>('ai-translate-report', {
+      matchId: existingMatch.id,
       report: existingMatch.report,
       targetLanguage
     });
     if (!translatedText) throw new Error("Translation failed");
-
-    // Save translation
-    const matchRef = doc(db, 'matches', existingMatch.id);
-    await setDoc(matchRef, {
-      translations: {
-        [targetLanguage]: translatedText
-      }
-    }, { merge: true });
 
     return translatedText;
   } catch (err) {
@@ -122,35 +94,16 @@ export async function generateMakelaarReport(propertyId: string, language: strin
       throw new Error("Je hebt het maximum aantal AI-rapporten voor vandaag bereikt (max 5 per dag). Probeer het morgen weer.");
     }
     
-    const propertyRef = doc(db, 'properties', propertyId);
-    const propertySnap = await getDoc(propertyRef);
-
-    if (!propertySnap.exists()) {
-      throw new Error("Woning gegevens ontbreken.");
-    }
-
-    const { report } = await postToServerFunction<{ report: string }>('ai-makelaar-report', {
+    const { reportDocument } = await postToServerFunction<{ reportDocument: any }>('ai-makelaar-report', {
       propertyId,
       language
     });
 
-    const reportText = report || "Er kon geen makelaarsrapport worden gegenereerd.";
-    const propertyData = propertySnap.data();
+    if (!reportDocument) {
+      throw new Error("Er kon geen makelaarsrapport worden gegenereerd.");
+    }
 
-    const reportData = {
-      propertyId,
-      providerId: propertyData.ownerId,
-      report: reportText,
-      language: language,
-      createdAt: serverTimestamp(),
-    };
-
-    await setDoc(doc(db, 'makelaar_reports', propertyId), reportData);
-    
-    return {
-      id: propertyId,
-      ...reportData
-    };
+    return reportDocument;
 
   } catch (error) {
     console.error("Makelaar report generation error:", error);

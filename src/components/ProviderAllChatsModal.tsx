@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -27,6 +27,7 @@ import {
 import { db, auth } from '../lib/firebase';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatDate, formatDateShort } from '../lib/formatters';
+import { fetchPublicProfileCard } from '../lib/publicProfile';
 
 interface ProviderAllChatsModalProps {
   onClose: () => void;
@@ -39,6 +40,8 @@ export default function ProviderAllChatsModal({ onClose }: ProviderAllChatsModal
   const [properties, setProperties] = useState<Record<string, any>>({});
   const [seekers, setSeekers] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const loadedPropertyIds = useRef(new Set<string>());
+  const loadedSeekerIds = useRef(new Set<string>());
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -66,19 +69,19 @@ export default function ProviderAllChatsModal({ onClose }: ProviderAllChatsModal
       const seekerIds = Array.from(new Set(chatsData.map((c: any) => c.seekerId)));
 
       for (const pId of propertyIds) {
-        if (!properties[pId]) {
-          getDoc(doc(db, 'properties', pId)).then(s => {
-            if (s.exists()) setProperties(prev => ({ ...prev, [pId]: { id: s.id, ...s.data() } }));
-          });
-        }
+        if (!pId || loadedPropertyIds.current.has(pId)) continue;
+        loadedPropertyIds.current.add(pId);
+        getDoc(doc(db, 'properties', pId)).then(s => {
+          if (s.exists()) setProperties(prev => ({ ...prev, [pId]: { id: s.id, ...s.data() } }));
+        });
       }
 
       for (const sId of seekerIds) {
-        if (!seekers[sId]) {
-          getDoc(doc(db, 'seeker_profiles', sId)).then(s => {
-            if (s.exists()) setSeekers(prev => ({ ...prev, [sId]: { id: s.id, ...s.data() } }));
-          });
-        }
+        if (!sId || loadedSeekerIds.current.has(sId)) continue;
+        loadedSeekerIds.current.add(sId);
+        fetchPublicProfileCard(db, sId, { fallbackRole: 'seeker', seekerFallback: t('common.candidate', 'Kandidaat') }).then(card => {
+          if (card) setSeekers(prev => ({ ...prev, [sId]: card }));
+        });
       }
       setLoading(false);
     }, (error) => {
@@ -165,8 +168,8 @@ export default function ProviderAllChatsModal({ onClose }: ProviderAllChatsModal
               const seekerData = seekers[chat.seekerId];
               const stats = getChatStats(chat);
               
-              const firstName = seekerData?.firstName || seekerData?.nickname || t('common.candidate', 'Kandidaat');
-              const photoUrl = seekerData?.photo_url || seekerData?.photoUrl || seekerData?.photoURL;
+              const firstName = seekerData?.firstName || seekerData?.displayName?.split(/\s+/)[0] || seekerData?.nickname || t('common.candidate', 'Kandidaat');
+              const photoUrl = seekerData?.photoUrl || seekerData?.photo_url || seekerData?.photoURL || '';
 
               return (
                 <motion.div

@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Home, Send, ShieldAlert } from 'lucide-react';
+import { X, Send, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { db, auth } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { postToServerFunction, ServerFunctionError } from '../lib/serverApi';
 import { toast } from 'react-hot-toast';
 
 interface PropertyLimitModalProps {
@@ -22,15 +21,9 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
 
     setSending(true);
     try {
-      const user = auth.currentUser;
-      await addDoc(collection(db, 'contact_requests'), {
-        uid: user?.uid || 'anonymous',
-        email: user?.email || 'no-email',
-        title: 'Upgrade: Extra Properties Request',
-        message: message,
-        createdAt: serverTimestamp(),
-        status: 'OPEN',
-        type: 'limit_upgrade' // Distinguish from general contact requests
+      await postToServerFunction<{ ok: boolean }>('contact-requests', {
+        requestType: 'limit_upgrade',
+        message: message.trim(),
       });
 
       toast.success(t('dashboard.provider.max_properties_success'));
@@ -38,7 +31,12 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
       onClose();
     } catch (error) {
       console.error('Error sending request:', error);
-      toast.error('Something went wrong. Please try again.');
+
+      if (error instanceof ServerFunctionError || error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('Something went wrong. Please try again.');
+      }
     } finally {
       setSending(false);
     }

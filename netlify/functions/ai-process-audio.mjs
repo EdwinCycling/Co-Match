@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { createGeminiClient, ensurePost, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { createGeminiClient, enforceRateLimit, ensurePost, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -9,7 +9,14 @@ export const handler = async (event) => {
   if (postResponse) return postResponse;
 
   return withErrorHandling(async () => {
-    await requireUser(event);
+    const user = await requireUser(event);
+    await enforceRateLimit({
+      scope: 'ai-process-audio',
+      identifier: user.uid,
+      maxRequests: 8,
+      windowMs: 10 * 60 * 1000,
+      errorMessage: 'Error: Too many AI audio requests. Please try again in a few minutes.',
+    });
     const { base64Audio, mimeType } = parseBody(event);
 
     if (!base64Audio || !mimeType) {

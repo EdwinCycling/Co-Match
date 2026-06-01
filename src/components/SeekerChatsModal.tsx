@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -25,9 +25,10 @@ import {
   getDoc,
   orderBy
 } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatTime, formatDate, formatDateShort } from '../lib/formatters';
+import { fetchPublicProfileCard } from '../lib/publicProfile';
 
 interface SeekerChatsModalProps {
   onClose: () => void;
@@ -40,6 +41,8 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
   const [properties, setProperties] = useState<Record<string, any>>({});
   const [providers, setProviders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+  const loadedPropertyIds = useRef(new Set<string>());
+  const loadedProviderIds = useRef(new Set<string>());
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -67,19 +70,19 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
       const providerIds = Array.from(new Set(chatsData.map((c: any) => c.providerId)));
 
       for (const pId of propertyIds) {
-        if (!properties[pId]) {
-          getDoc(doc(db, 'properties', pId)).then(s => {
-            if (s.exists()) setProperties(prev => ({ ...prev, [pId]: { id: s.id, ...s.data() } }));
-          });
-        }
+        if (!pId || loadedPropertyIds.current.has(pId)) continue;
+        loadedPropertyIds.current.add(pId);
+        getDoc(doc(db, 'properties', pId)).then(s => {
+          if (s.exists()) setProperties(prev => ({ ...prev, [pId]: { id: s.id, ...s.data() } }));
+        });
       }
 
       for (const prId of providerIds) {
-        if (!providers[prId]) {
-          getDoc(doc(db, 'providers', prId)).then(s => {
-            if (s.exists()) setProviders(prev => ({ ...prev, [prId]: { id: s.id, ...s.data() } }));
-          });
-        }
+        if (!prId || loadedProviderIds.current.has(prId)) continue;
+        loadedProviderIds.current.add(prId);
+        fetchPublicProfileCard(db, prId, { fallbackRole: 'provider', providerFallback: t('common.provider', 'Aanbieder') }).then(card => {
+          if (card) setProviders(prev => ({ ...prev, [prId]: card }));
+        });
       }
       setLoading(false);
     }, (error) => {
@@ -164,7 +167,8 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
               const prop = properties[chat.propertyId];
               const prov = providers[chat.providerId];
               const stats = getChatStats(chat);
-              const firstName = prov?.displayName?.split(' ')[0] || prov?.firstName || t('common.provider', 'Aanbieder');
+              const firstName = prov?.firstName || prov?.displayName?.split(/\s+/)[0] || t('common.provider', 'Aanbieder');
+              const providerPhoto = prov?.photoUrl || prov?.photoURL || '';
 
               return (
                 <motion.div
@@ -177,8 +181,8 @@ export default function SeekerChatsModal({ onClose }: SeekerChatsModalProps) {
                     {/* Visual Section - The Business Card Header */}
                     <div className="md:w-72 p-6 bg-surface-container-low border-b md:border-b-0 md:border-r border-outline flex flex-col items-center text-center">
                       <div className="w-20 h-20 rounded-2xl bg-surface shadow-md flex items-center justify-center overflow-hidden border border-outline mb-4 group-hover:scale-105 transition-transform">
-                        {prov?.photoUrl ? (
-                          <img src={prov.photoUrl} className="w-full h-full object-cover" alt="" />
+                        {providerPhoto ? (
+                          <img src={providerPhoto} className="w-full h-full object-cover" alt="" />
                         ) : (
                           <User size={32} className="text-primary/40" />
                         )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, getDocs, doc, setDoc, deleteDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Plus, Edit2, Trash2, Globe, Tag, SortAsc, Eye, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { ExpertLink, ExpertHub } from './ExpertHub';
 import { motion, AnimatePresence } from 'motion/react';
 import { TypeAheadSelect } from './TypeAheadSelect';
+import { deleteExpertLink, reorderExpertLinks, saveExpertLink } from '../services/adminWriteService';
 
 const CATEGORIES = ['Juristen', 'Verzekeraars', 'Hypotheekadviseurs', 'Notarissen', 'Verhuizers', 'Overige'];
 const COUNTRIES = [
@@ -60,10 +61,8 @@ export default function AdminExpertLinks() {
     }
 
     try {
-      const id = editingLink.id || doc(collection(db, 'expert_links')).id;
-      const ref = doc(db, 'expert_links', id);
-      
-      const payload: any = {
+      await saveExpertLink({
+        linkId: editingLink.id,
         title: editingLink.title,
         url: editingLink.url,
         country: editingLink.country,
@@ -72,14 +71,7 @@ export default function AdminExpertLinks() {
         description: editingLink.description || '',
         linkType: editingLink.linkType || 'lead',
         isActive: editingLink.isActive !== undefined ? editingLink.isActive : true,
-        updatedAt: serverTimestamp()
-      };
-
-      if (!editingLink.id) {
-        payload.createdAt = serverTimestamp();
-      }
-
-      await setDoc(ref, payload, { merge: true });
+      });
       toast.success('Link opgeslagen');
       setIsEditModalOpen(false);
       fetchLinks();
@@ -92,7 +84,7 @@ export default function AdminExpertLinks() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Weet je zeker dat je deze link wilt verwijderen?')) return;
     try {
-      await deleteDoc(doc(db, 'expert_links', id));
+      await deleteExpertLink(id);
       toast.success('Link verwijderd');
       fetchLinks();
     } catch (err) {
@@ -107,10 +99,7 @@ export default function AdminExpertLinks() {
     const prev = filteredList[index - 1];
     
     try {
-      await updateDoc(doc(db, 'expert_links', current.id), { order_index: prev.order_index });
-      await updateDoc(doc(db, 'expert_links', prev.id), { order_index: current.order_index });
-      
-      // Optimaal lokaal updaten in plaats van full fetch
+      await reorderExpertLinks(current.id, current.order_index || 0, prev.id, prev.order_index || 0);
       fetchLinks();
     } catch (err) {
       toast.error('Fout bij sorteren');
@@ -123,9 +112,7 @@ export default function AdminExpertLinks() {
     const next = filteredList[index + 1];
     
     try {
-      await updateDoc(doc(db, 'expert_links', current.id), { order_index: next.order_index });
-      await updateDoc(doc(db, 'expert_links', next.id), { order_index: current.order_index });
-      
+      await reorderExpertLinks(current.id, current.order_index || 0, next.id, next.order_index || 0);
       fetchLinks();
     } catch (err) {
       toast.error('Fout bij sorteren');
