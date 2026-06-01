@@ -1,4 +1,4 @@
-import { ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
+import { enforceRateLimit, ensurePost, getDb, handleOptions, json, parseBody, requireUser, serverTimestamp, withErrorHandling } from './_shared.mjs';
 
 function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;
@@ -116,6 +116,14 @@ export const handler = async (event) => {
     }
 
     if (action === 'deduct') {
+      await enforceRateLimit({
+        scope: 'user-credits-deduct',
+        identifier: user.uid,
+        maxRequests: 20,
+        windowMs: 60 * 1000,
+        errorMessage: 'Error: Too many credit deduction requests. Please try again in a minute.',
+      });
+      
       if (!isPositiveInteger(amount) || amount > 1000) {
         return json(400, { error: 'Error: Invalid credit amount.' });
       }

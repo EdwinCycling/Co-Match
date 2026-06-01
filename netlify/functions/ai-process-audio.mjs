@@ -23,6 +23,11 @@ export const handler = async (event) => {
       return json(400, { error: 'Error: Missing audio input.' });
     }
 
+    const maxBase64Size = 5 * 1024 * 1024;
+    if (base64Audio.length > maxBase64Size) {
+      return json(400, { error: 'Error: Audio file too large. Maximum size is 5 MB.' });
+    }
+
     const prompt = `Transcribe the provided audio. Also evaluate if the audio contains any explicit sexual language, severe profanity, or harassment.
 Return a JSON object with:
 - isAcceptable (boolean): false if there is sexual content, severe profanity, or harassment; true otherwise.

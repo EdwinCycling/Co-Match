@@ -1,4 +1,4 @@
-import { ensurePost, getGeoapifyApiKey, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
+import { enforceRateLimit, ensurePost, getGeoapifyApiKey, handleOptions, json, parseBody, requireUser, withErrorHandling } from './_shared.mjs';
 
 export const handler = async (event) => {
   const optionsResponse = handleOptions(event);
@@ -8,7 +8,14 @@ export const handler = async (event) => {
   if (postResponse) return postResponse;
 
   return withErrorHandling(async () => {
-    await requireUser(event);
+    const user = await requireUser(event);
+    await enforceRateLimit({
+      scope: 'geoapify-places',
+      identifier: user.uid,
+      maxRequests: 30,
+      windowMs: 60 * 1000,
+      errorMessage: 'Error: Too many place search requests. Please try again in a minute.',
+    });
     const { categories, lon, lat, radius, limit = 10, bias } = parseBody(event);
 
     if (!categories || typeof lon !== 'number' || typeof lat !== 'number' || typeof radius !== 'number') {

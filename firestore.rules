@@ -43,7 +43,7 @@ service cloud.firestore {
 
     // Public profile card data used by chats and lightweight profile previews
     match /public_profiles/{userId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if isVerified();
       allow create, update, delete: if isAdmin();
     }
 
@@ -104,7 +104,16 @@ service cloud.firestore {
 
     // Contact Requests
     match /contact_requests/{requestId} {
-      allow create: if isSignedIn();
+      function isValidContactRequest(data) {
+        return data.keys().hasAll(['name', 'email', 'message']) &&
+               data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+               data.email is string && data.email.size() >= 5 && data.email.size() <= 255 && data.email.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+               data.message is string && data.message.size() >= 10 && data.message.size() <= 2000 &&
+               data.get('phone', '') is string && data.get('phone', '').size() <= 50 &&
+               data.createdAt == request.time;
+      }
+      
+      allow create: if isVerified() && isValidContactRequest(incoming());
       allow list, get, update, delete: if isAdmin();
     }
 
@@ -127,7 +136,7 @@ service cloud.firestore {
                data.get('highlightWeeks', []) is list;
       }
 
-      allow list, get: if isSignedIn();
+      allow list, get: if isVerified();
       allow create, update, delete: if isAdmin();
     }
 
@@ -139,7 +148,7 @@ service cloud.firestore {
                data.get('about', '') is string && data.get('about', '').size() <= 10000;
       }
       
-      allow get: if isSignedIn();
+      allow get: if isOwner(providerId) || isAdmin();
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
@@ -156,7 +165,7 @@ service cloud.firestore {
                data.get('property_type', []) is list && data.get('property_type', []).size() <= 20;
       }
       
-      allow get: if isSignedIn();
+      allow get: if isVerified();
       allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
@@ -167,7 +176,7 @@ service cloud.firestore {
         return (data.role_instruction is string && data.role_instruction.size() <= 10000) &&
                (data.match_instruction is string && data.match_instruction.size() <= 10000);
       }
-      allow read: if isSignedIn();
+      allow read: if isVerified();
       allow write: if isAdmin() && isValidAiSettings(incoming());
     }
 
@@ -179,19 +188,19 @@ service cloud.firestore {
                data.report is string && data.report.size() <= 50000 &&
                data.createdAt == request.time;
       }
-      allow get: if isSignedIn() && (
+      allow get: if isVerified() && (
                     resource.data.seekerId == request.auth.uid ||
                     resource.data.providerId == request.auth.uid ||
                     isAdmin()
                   );
-      allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     // Makelaar Reports
     match /makelaar_reports/{reportId} {
-      allow get: if isSignedIn();
+      allow get: if isVerified();
       allow list: if isAdmin();
       allow create, update: if isAdmin();
       allow delete: if isAdmin();
@@ -210,7 +219,7 @@ service cloud.firestore {
                data.get('isActive', true) is bool;
       }
 
-      allow read: if isSignedIn();
+      allow read: if isVerified();
       allow create: if isAdmin() && isValidExpertLink(incoming());
       allow update: if isAdmin() && isValidExpertLink(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['country', 'category', 'title', 'url', 'order_index', 'description', 'isActive', 'linkType', 'updatedAt']);
       allow delete: if isAdmin();
@@ -233,14 +242,14 @@ service cloud.firestore {
                (msg.createdAt is timestamp || msg.createdAt is string);
       }
 
-      allow get: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
-      allow list: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow get: if isVerified() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (resource.data.seekerId == request.auth.uid || resource.data.providerId == request.auth.uid || isAdmin());
       allow create, update, delete: if isAdmin();
     }
 
     // Admin Messages rules
     match /admin_messages/{messageId} {
-      allow read: if isSignedIn();
+      allow read: if isVerified();
       allow write: if isAdmin();
     }
 
@@ -256,7 +265,7 @@ service cloud.firestore {
                data.get('imageUrl', '') is string && data.get('imageUrl', '').size() <= 1000;
       }
 
-      allow read: if isSignedIn();
+      allow read: if isVerified();
       allow create: if isAdmin() && isValidGift(incoming());
       allow update: if isAdmin() && isValidGift(incoming()) && incoming().diff(existing()).affectedKeys().hasAny(['title', 'message', 'targetAudience', 'startDate', 'isHighPriority', 'imageUrl', 'type', 'updatedAt']);
       allow delete: if isAdmin();
