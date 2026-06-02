@@ -26,7 +26,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
         message: message.trim(),
       });
 
-      toast.success(t('dashboard.provider.max_properties_success'));
+      toast.success(t('dashboard.provider.max_properties_success', 'Request sent successfully.'));
       setMessage('');
       onClose();
     } catch (error) {
@@ -35,7 +35,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
       if (error instanceof ServerFunctionError || error instanceof Error) {
         toast.error(error.message);
       } else {
-        toast.error('Something went wrong. Please try again.');
+        toast.error(t('common.pleaseTryAgain', 'Please try again.'));
       }
     } finally {
       setSending(false);
@@ -74,11 +74,11 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
               </div>
 
               <h2 className="text-2xl md:text-3xl font-display font-black text-on-background mb-3">
-                {t('dashboard.provider.max_properties_modal_title')}
+                {t('dashboard.provider.max_properties_modal_title', 'Need more property slots?')}
               </h2>
               
               <p className="text-on-surface-variant font-medium leading-relaxed mb-8">
-                {t('dashboard.provider.max_properties_modal_desc')}
+                {t('dashboard.provider.max_properties_modal_desc', 'Send us a short request and we will review your limit upgrade.')}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -87,7 +87,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
                     required
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder={t('dashboard.provider.max_properties_message_placeholder')}
+                    placeholder={t('dashboard.provider.max_properties_message_placeholder', 'Tell us briefly why you need more slots...')}
                     rows={4}
                     className="w-full bg-surface-container-low border-2 border-outline/30 rounded-2xl px-5 py-4 text-on-surface placeholder:text-on-surface-variant focus:ring-2 focus:ring-primary outline-none transition-all font-medium resize-none"
                   />
@@ -99,7 +99,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
                     onClick={onClose}
                     className="flex-1 py-4 rounded-2xl font-bold border-2 border-outline hover:bg-surface-container transition-all"
                   >
-                    {t('dashboard.provider.max_properties_cancel')}
+                    {t('dashboard.provider.max_properties_cancel', 'Cancel')}
                   </button>
                   <button
                     type="submit"
@@ -111,7 +111,7 @@ const PropertyLimitModal: React.FC<PropertyLimitModalProps> = ({ isOpen, onClose
                     ) : (
                       <>
                         <Send size={18} />
-                        {t('dashboard.provider.max_properties_send')}
+                        {t('dashboard.provider.max_properties_send', 'Send request')}
                       </>
                     )}
                   </button>

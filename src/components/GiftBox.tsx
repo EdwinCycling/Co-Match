@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
+import ModalPopup from './ModalPopup';
 
 interface GiftItem {
   id: string;
@@ -44,6 +45,7 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
   const [particles, setParticles] = useState<SparkParticle[]>([]);
   const [deepLinkedId, setDeepLinkedId] = useState<string | null>(null);
   const [explosionOrigin, setExplosionOrigin] = useState({ x: 0, y: 0 });
+  const [shareLinkModal, setShareLinkModal] = useState<{ link: string; message: string } | null>(null);
   const autoUnboxChecked = useRef(false);
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -255,19 +257,32 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
           }
         } catch (error) {
           console.error('Fallback copy fails', error);
-          window.prompt(t('gifts.share_fail', 'Kopieer deze link handmatig:'), deepLink);
+          // Let the outer catch block handle showing the modal for manual copy
+          throw error;
         } finally {
           document.body.removeChild(textArea);
         }
       }
     } catch (err) {
-      window.prompt(t('gifts.share_fail', 'Kopieer deze link handmatig:'), deepLink);
+      setShareLinkModal({
+        link: deepLink,
+        message: t('gifts.share_fail', 'Kopieer deze link handmatig:'),
+      });
     }
   };
 
   const unopenedGiftsCount = gifts.filter(g => !openedIds.includes(g.id)).length;
 
   return (
+    <>
+      <ModalPopup
+        isOpen={!!shareLinkModal}
+        title={t('gifts.share_modal_title', 'Deel link')}
+        message={shareLinkModal?.message || ''}
+        copyValue={shareLinkModal?.link}
+        copyButtonText={t('common.copy', 'Kopiëren')}
+        onClose={() => setShareLinkModal(null)}
+      />
     <div className="relative flex items-center justify-center">
       {/* Trigger Button */}
       <button
@@ -554,10 +569,12 @@ export default function GiftBox({ user, userRole }: GiftBoxProps) {
                 {t('gifts.footer_text', 'Met liefde gemaakt voor onze gebruikers ❤️')}
               </div>
             </motion.div>
-          </>)}
+          </>
+        )}
         </AnimatePresence>,
         document.body
       )}
     </div>
+    </>
   );
 }

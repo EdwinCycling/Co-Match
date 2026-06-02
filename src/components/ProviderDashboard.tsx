@@ -81,6 +81,8 @@ import {
   reactivateProperty,
   updateProperty,
 } from '../services/propertyService';
+import { useMessages } from '../services/messageContext';
+import { MESSAGE_KEYS } from '../constants/messages';
 
 export interface PropertyImage {
   id: string;
@@ -143,6 +145,7 @@ import { useCurrencyConverter } from '../hooks/useCurrencyConverter';
 import { TrustBadge, TrustPopup } from './TrustBadge';
 import { Linkedin, ExternalLink } from 'lucide-react';
 import { getDoc } from 'firebase/firestore';
+import ModalPopup from './ModalPopup';
 
 const ProviderChatsModal = lazy(() => import('./ProviderChatsModal'));
 const PropertyLimitModal = lazy(() => import('./PropertyLimitModal'));
@@ -262,6 +265,7 @@ const ReactivationAlert: React.FC<{
 
 export default function ProviderDashboard() {
   const { t } = useTranslation();
+  const messages = useMessages();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -273,6 +277,7 @@ export default function ProviderDashboard() {
   const [userData, setUserData] = useState<any>(null);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showTrustPopup, setShowTrustPopup] = useState(false);
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
   const [chattingProp, setChattingProp] = useState<Property | null>(null);
   useEffect(() => {
     if (chattingProp) {
@@ -1620,6 +1625,7 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
   const { t } = useTranslation();
   const { dateFormat, timeFormat } = useSettings();
   const currencyConverter = useCurrencyConverter();
+  const messages = useMessages();
   const [formData, setFormData] = useState(prop);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
 
@@ -1643,6 +1649,7 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
   const [activeTab, setActiveTab] = useState('basis');
   const [editorMode, setEditorMode] = useState<'selector' | 'short' | 'free_text' | 'full' | 'visibility' | 'admin_info'>('selector');
   const [showToast, setShowToast] = useState(false);
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
   const [visibilitySettings, setVisibilitySettings] = useState<Record<string, boolean>>(
     prop.features.visibility || { tenant_prefs: false }
   );
@@ -1881,7 +1888,10 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
     try {
       // Validation Logic
       if (!formData.title || formData.title.trim().length === 0) {
-        alert(t('prop.editor.alert_title_required', 'Vul een naam in voor de woning.'));
+        setSystemDialog({
+          title: t('common.modal_title', 'Melding'),
+          message: t('prop.editor.alert_title_required'),
+        });
         setSaving(false);
         return;
       }
@@ -1890,13 +1900,19 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
       
       // If trying to activate but short completion is not 100%
       if (formData.isActive && currentShortCompletion < 100) {
-        alert(t('prop.editor.alert_short_incomplete', 'Je kunt de woning pas activeren als de Snelle Start 100% voltooid is.'));
+        setSystemDialog({
+          title: t('common.modal_title', 'Melding'),
+          message: t('prop.editor.alert_short_incomplete'),
+        });
         setSaving(false);
         return;
       }
 
       if (!formData.title || formData.title.trim().length < 2) {
-        alert(t('prop.editor.alert_title_too_short', 'The property name is required (minimum 2 characters).'));
+        setSystemDialog({
+          title: t('common.modal_title', 'Melding'),
+          message: t('prop.editor.alert_title_too_short'),
+        });
         setSaving(false);
         return;
       }
@@ -1913,12 +1929,18 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
 
         if (formData.features.goal === 'huisbewaring_expat') {
           if (!formData.features.min_stay || formData.features.min_stay <= 0) {
-            alert(t('prop.editor.alert_min_stay_required', 'Minimale huurperiode is verplicht voor vakantie/onderverhuur en huisbewaring.'));
+            setSystemDialog({
+              title: t('common.modal_title', 'Melding'),
+              message: t('prop.editor.alert_min_stay_required'),
+            });
             setSaving(false);
             return;
           }
           if (!formData.features.max_stay || formData.features.max_stay <= 0) {
-            alert(t('prop.editor.alert_max_stay_required', 'Maximale huurperiode is verplicht voor vakantie/onderverhuur en huisbewaring.'));
+            setSystemDialog({
+              title: t('common.modal_title', 'Melding'),
+              message: t('prop.editor.alert_max_stay_required'),
+            });
             setSaving(false);
             return;
           }
@@ -1930,7 +1952,10 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
           const hasAvailability = formData.monthlyAvailability && Object.values(formData.monthlyAvailability).some(v => (v === 'free' || v === 'available' || v === 'consultation'));
           if (!hasAvailability && formData.isActive) {
             updatedFormData.isActive = false; // Auto pause
-            alert(t('prop.editor.auto_paused', 'Woning heeft geen beschikbare maanden en is automatisch gepauzeerd.'));
+            setSystemDialog({
+              title: t('common.modal_title', 'Melding'),
+              message: t('prop.editor.auto_paused'),
+            });
           }
         }
 
@@ -1981,13 +2006,19 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
       }
     } catch (error: any) {
       if (error instanceof Error && error.message.includes('too large')) {
-        alert(error.message);
+        setSystemDialog({
+          title: t('common.modal_title', 'Melding'),
+          message: error.message,
+        });
       } else if (error.code === 'permission-denied' || error.name === 'FirebaseError') {
         handleFirestoreError(error, OperationType.UPDATE, `properties/${prop.id}`);
       } else {
         // Local error or other
         console.error('Update error:', error);
-        alert(error.rawError?.message || error.message || t('common.error_occurred', 'An error occurred while saving.'));
+        setSystemDialog({
+          title: t('common.modal_title', 'Melding'),
+          message: error.rawError?.message || error.message || t('common.error_occurred'),
+        });
       }
     }
     setSaving(false);
@@ -2224,7 +2255,10 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
 
   const handleStatusChange = async (newStatus: 'available' | 'paused', newIsActive: boolean) => {
     if (newIsActive && getShortCompletion(formData) < 100) {
-      alert('Je kunt de woning pas activeren als de Snelle Start 100% voltooid is.');
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('prop.editor.alert_short_incomplete'),
+      });
       return;
     }
 
@@ -2447,11 +2481,24 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
                     onClick={async () => {
                       if (onDeletePrompt) {
                         onDeletePrompt();
-                      } else if (window.confirm(t('dash.confirm_delete_msg', 'Weet je zeker dat je deze woning wilt verwijderen? Dit kan niet ongedaan worden gemaakt.'))) {
+                      } else {
                         try {
+                          await messages.confirm({
+                            title: t('property.deleteConfirm.title', { defaultValue: 'Delete Property?' }),
+                            description: t('dash.confirm_delete_msg', { 
+                              defaultValue: 'Are you sure you want to delete this property? This action cannot be undone.'
+                            }),
+                            confirmLabel: t('common.delete', { defaultValue: 'Delete' }),
+                            isDangerous: true,
+                          });
                           await deleteProperty(prop.id);
+                          messages.success(MESSAGE_KEYS.property.deleteSuccess);
                           onClose();
                         } catch (error) {
+                          if (error instanceof Error && error.message === 'User cancelled') {
+                            return; // User cancelled
+                          }
+                          messages.error(MESSAGE_KEYS.property.deleteError);
                           handleFirestoreError(error, OperationType.DELETE, `properties/${prop.id}`);
                         }
                       }
@@ -5488,6 +5535,13 @@ export function PropertyEditor({ prop, onClose, onDeletePrompt, isAdmin }: { pro
           </Suspense>
         )}
       </AnimatePresence>
+
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
     </motion.div>
   );
 }

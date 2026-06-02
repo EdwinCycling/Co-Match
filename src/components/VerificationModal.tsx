@@ -43,10 +43,10 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
   }, [isOpen]);
 
   const handleLinkedInSubmit = async () => {
-     if (!linkedinUrl.includes('linkedin.com/in/')) {
-        toast.error("Voer een geldige LinkedIn profiel URL in.");
+      if (!linkedinUrl.includes('linkedin.com/in/')) {
+        toast.error(t('verification.linkedin_invalid_url', 'Enter a valid LinkedIn profile URL.'));
         return;
-     }
+      }
      
      if (!auth.currentUser) return;
      
@@ -54,14 +54,14 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
      try {
          const result = await verifyLinkedIn(auth.currentUser.uid, linkedinUrl, userName || '');
          if (result.status === 'APPROVED') {
-             toast.success(t('verification.linkedin_success_msg', "Succes! Je LinkedIn profiel is geverifieerd en opgeslagen voor onze administratie. Je bent nu Professional (Niveau 2)."), { duration: 6000 });
+             toast.success(t('verification.linkedin_success_msg', "Success! Your LinkedIn profile has been verified and saved for our records. You are now Professional (Level 2)."), { duration: 6000 });
              onVerificationUpdate?.(2);
              setActiveTab('info');
          } else {
-             toast.error(`Verificatie mislukt. Score was ${result.score}. Zorg voor een volledig ingevuld profiel.`);
+             toast.error(t('verification.linkedin_failed_score', 'Verification failed. Score was {{score}}. Please make sure your profile is fully completed.', { score: result.score }));
          }
      } catch (err) {
-         toast.error("Er ging iets mis bij de verificatie. Probeer het later opnieuw.");
+         toast.error(t('verification.generic_error', 'Something went wrong during verification. Please try again later.'));
      } finally {
          setIsVerifyingLinkedIn(false);
      }
@@ -78,7 +78,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
               setIsCameraActive(true);
           }
       } catch (err) {
-          setCameraError("Camera toegang geweigerd of niet beschikbaar. Zorg dat je de app toestemming hebt gegeven.");
+          setCameraError(t('verification.camera_denied', 'Camera access was denied or is unavailable. Make sure the app has permission.'));
           console.error(err);
       }
   };
@@ -94,7 +94,7 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
   const captureAndVerify = async () => {
       if (!videoRef.current || !canvasRef.current || !auth.currentUser) return;
       if (!propertyAddress) {
-          toast.error("Vul het referentieadres in zodat we dit kunnen matchen.");
+          toast.error(t('verification.reference_address_required', 'Enter the reference address so we can match it.'));
           return;
       }
       
@@ -119,16 +119,16 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({ isOpen, on
           setScanResult(result);
           
           if (result.status === 'APPROVED') {
-              toast.success("Document herkend en Adres Geverifieerd! (Niveau 3)");
+              toast.success(t('verification.address_verified', 'Document recognized and address verified! (Level 3)'));
               onVerificationUpdate?.(3);
           } else if (result.status === 'PENDING_MANUAL') {
-              toast('Verificatie doorgestuurd voor handmatige controle.', { icon: '⏳' });
+              toast(t('verification.manual_review', 'Verification sent for manual review.'), { icon: '⏳' });
               // It is now stored in Firestore (verificationStatus.level3.manualReviewImage)
           } else {
-              toast.error("Verificatie afgewezen: " + (result.reason || 'Onduidelijke AI uitkomst.'));
+              toast.error(t('verification.address_rejected', 'Verification rejected: {{reason}}', { reason: result.reason || t('verification.unclear_result', 'unclear AI result') }));
           }
       } catch (err) {
-          toast.error("Scan fout: " + String(err));
+          toast.error(t('verification.scan_error', 'Scan error: {{error}}', { error: String(err) }));
       } finally {
           setIsScanning(false);
       }

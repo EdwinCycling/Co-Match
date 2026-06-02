@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { SUPPORTED_CURRENCIES } from '../constants';
 import { APP_LANGUAGE_STORAGE_KEY } from '../config/appLanguages';
 import LanguageSelectList from './LanguageSelectList';
+import ModalPopup from './ModalPopup';
 
 interface Props {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
   const { theme, setTheme, unit, setUnit, dateFormat, setDateFormat, timeFormat, setTimeFormat, currency, setCurrency, newsletterEnabled, setNewsletterEnabled, smartMatchAlertEnabled, setSmartMatchAlertEnabled, smartMatchAlertHour, chatMailAlertEnabled, setChatMailAlertEnabled, providerChatMailAlertOption, setProviderChatMailAlertOption, saveSettings } = useSettings();
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -68,7 +70,10 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
       onClose();
     } catch (error) {
       console.error(error);
-      alert('Error saving settings');
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('user_settings.save_error', 'Er is iets misgegaan bij het opslaan van instellingen.'),
+      });
     } finally {
       setIsSaving(false);
     }
@@ -78,6 +83,12 @@ export default function UserSettingsModal({ isOpen, onClose, userRole }: Props) 
     <AnimatePresence>
       {isOpen && (
         <React.Fragment>
+          <ModalPopup
+            isOpen={!!systemDialog}
+            title={systemDialog?.title}
+            message={systemDialog?.message || ''}
+            onClose={() => setSystemDialog(null)}
+          />
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

@@ -53,6 +53,7 @@ import {
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { doc, getDoc, limit, where, onSnapshot, query, collection, getDocs } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+import ModalPopup from './ModalPopup';
 import { LANGUAGES_SORTED } from "../data/languages";
 import SeekerProfileEditor from "./SeekerProfileEditor";
 import { AutocompleteInput } from "./AutocompleteInput";
@@ -78,6 +79,8 @@ import { ExpertHub } from "./ExpertHub";
 import { TrustBadge, TrustPopup } from "./TrustBadge";
 import { MosaicGallery } from "./MosaicGallery";
 import CoHarmonyAnalysis, { calculateCHAScore } from "./CoHarmonyAnalysis";
+import { useMessages } from "../services/messageContext";
+import { MESSAGE_KEYS } from "../constants/messages";
 
 const WorldGlobeModal = lazy(() =>
   import("./WorldGlobeModal").then((module) => ({ default: module.WorldGlobeModal }))
@@ -242,6 +245,7 @@ export default function SeekerDashboard({
   onNavigate: (page: string) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const messages = useMessages();
 
   // Custom helper to translate Dutch and English texts seamlessly
   const currentLang = i18n.language?.startsWith("nl") ? "nl" : "en";
@@ -308,6 +312,7 @@ export default function SeekerDashboard({
   const [matchReport, setMatchReport] = useState<string | null>(null);
   const [isMatching, setIsMatching] = useState(false);
   const [showDirectChat, setShowDirectChat] = useState(false);
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
   useEffect(() => {
     if (showDirectChat) {
       window.dispatchEvent(new Event('chat-opened'));
@@ -1256,16 +1261,21 @@ export default function SeekerDashboard({
       !!chatsStatus[prop.id];
 
     if (directChat && !isChatUnlocked) {
-      const confirmed = await window.confirm(
-        t(
-          "seeker.start_chat_confirm",
-          "Dit kost credits om een chat te starten. Doorgaan?",
-        ),
-      );
-      if (!confirmed) {
-        setSelectedProperty(null);
-        setShowDirectChat(false);
-        return;
+      try {
+        await messages.confirm({
+          title: t('seeker.startChatConfirm.title', { defaultValue: 'Start Chat?' }),
+          description: t(
+            "seeker.start_chat_confirm",
+            "This will cost credits to start a chat. Continue?",
+          ),
+          confirmLabel: t('common.confirm', { defaultValue: 'Confirm' }),
+        });
+      } catch (e) {
+        if (e instanceof Error && e.message === 'User cancelled') {
+          setSelectedProperty(null);
+          setShowDirectChat(false);
+          return;
+        }
       }
 
       const success = await deductCredits(
@@ -1322,12 +1332,10 @@ export default function SeekerDashboard({
               ),
             );
           } else {
-            alert(
-              t(
-                "seeker.report_error",
-                "Fout bij het genereren van het rapport.",
-              ),
-            );
+            setSystemDialog({
+              title: t('common.modal_title', 'Melding'),
+              message: t('seeker.report_error'),
+            });
           }
         }
       }
@@ -2585,6 +2593,13 @@ export default function SeekerDashboard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
 
       {/* Property Teaser Modal */}
       <AnimatePresence>
@@ -4571,6 +4586,7 @@ function PropertyFullDetailsModal({
   const [existingMatch, setExistingMatch] = useState<any>(null);
   const [showMatchWarning, setShowMatchWarning] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -4643,7 +4659,10 @@ function PropertyFullDetailsModal({
         unlockMatch: true,
       });
     } catch (error) {
-      alert(t("chat.error_send")); // Using a generic send error for now or add report.error_gen
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_send'),
+      });
       console.error(error);
     }
     setIsMatching(false);
@@ -5882,6 +5901,12 @@ function PropertyFullDetailsModal({
             </motion.div>
           )}
         </AnimatePresence>
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
       </motion.div>
     </motion.div>
   );

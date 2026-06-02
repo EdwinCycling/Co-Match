@@ -5,8 +5,9 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import ReactMarkdown from 'react-markdown';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import ModalPopup from './ModalPopup';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useSettings } from '../contexts/SettingsContext';
 import { formatTime, formatDate } from '../lib/formatters';
@@ -26,6 +27,8 @@ import {
   terminateSeekerChat,
   toggleFavorite as toggleFavoriteOnServer,
 } from '../services/chatService';
+import { useMessages } from '../services/messageContext';
+import { MESSAGE_KEYS } from '../constants/messages';
 
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
@@ -49,6 +52,7 @@ interface MatchReportModalProps {
 
 export default function MatchReportModal({ report, property, onClose, initialShowContact = false, seekerId }: MatchReportModalProps) {
   const { t } = useTranslation();
+  const messages = useMessages();
   const currencyConverter = useCurrencyConverter();
 
   const { dateFormat, timeFormat } = useSettings();
@@ -82,6 +86,13 @@ export default function MatchReportModal({ report, property, onClose, initialSho
   const [message, setMessage] = useState('');
   const [chatData, setChatData] = useState<any>(null);
   const [isSending, setIsSending] = useState(false);
+  const [systemDialog, setSystemDialog] = useState<{
+    title?: string;
+    message: React.ReactNode;
+    copyValue?: string;
+    copyLabel?: string;
+    copyButtonText?: string;
+  } | null>(null);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [isExpertHubOpen, setIsExpertHubOpen] = useState(false);
   const [showSafetyWarning, setShowSafetyWarning] = useState(true);
@@ -214,24 +225,36 @@ export default function MatchReportModal({ report, property, onClose, initialSho
     if (!auth.currentUser || !message.trim() || isSending) return;
 
     if (chatData && chatData.messages && chatData.messages.length >= 50) {
-      alert("Maximum van 50 berichten bereikt voor deze chatbox.");
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_max_messages', 'Maximum van 50 berichten bereikt voor deze chatbox.'),
+      });
       return;
     }
 
     const sanitizedText = sanitizeMessage(message);
     if (!sanitizedText) {
-      alert(t('chat.error_invalid'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_invalid'),
+      });
       return;
     }
 
     if (sanitizedText.length > MAX_MESSAGE_LENGTH) {
-      alert(t('chat.error_too_long', { max: MAX_MESSAGE_LENGTH }));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_too_long', { max: MAX_MESSAGE_LENGTH }),
+      });
       return;
     }
 
     // Check limit
     if (seekerMessagesLeft === 0) {
-      alert(t('chat.error_limit'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_limit'),
+      });
       return;
     }
 
@@ -259,7 +282,10 @@ export default function MatchReportModal({ report, property, onClose, initialSho
       setMessage('');
     } catch (e) {
       console.error('Error sending seeker message:', e);
-      alert(e instanceof Error ? e.message : t('chat.error_send'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: e instanceof Error ? e.message : t('chat.error_send'),
+      });
     }
     setTimeout(() => setIsSending(false), 300);
   };
@@ -268,12 +294,18 @@ export default function MatchReportModal({ report, property, onClose, initialSho
     if (!auth.currentUser || isSending) return;
 
     if (chatData && chatData.messages && chatData.messages.length >= 50) {
-      alert("Maximum van 50 berichten bereikt voor deze chatbox.");
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_max_messages', 'Maximum van 50 berichten bereikt voor deze chatbox.'),
+      });
       return;
     }
 
     if (seekerMessagesLeft === 0) {
-      alert(t('chat.error_limit'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_limit'),
+      });
       return;
     }
 
@@ -307,7 +339,10 @@ export default function MatchReportModal({ report, property, onClose, initialSho
       setShowAudioRecorder(false);
     } catch (e) {
       console.error("Error sending audio message:", e);
-      alert(e instanceof Error ? e.message : t('chat.error_send'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: e instanceof Error ? e.message : t('chat.error_send'),
+      });
     }
     setTimeout(() => setIsSending(false), 300);
   };
@@ -511,15 +546,25 @@ export default function MatchReportModal({ report, property, onClose, initialSho
     if (!auth.currentUser || !property?.id || !chatData) return;
     if (chatData.status === 'terminated') return;
 
-    if (!window.confirm(t('chat.terminate_confirm', 'Weet je zeker dat je dit gesprek wilt beëindigen? Je kunt dan niet meer reageren.'))) return;
-
     try {
+      await messages.confirm({
+        title: t('chat.terminateChat.title', { defaultValue: 'Terminate Chat?' }),
+        description: t('chat.terminate_confirm', { 
+          defaultValue: 'Are you sure you want to terminate this conversation? You will not be able to respond anymore.'
+        }),
+        confirmLabel: t('common.confirm', { defaultValue: 'Confirm' }),
+        isDangerous: true,
+      });
+      
       const chatId = `${auth.currentUser.uid}_${property.id}`;
       await terminateSeekerChat(chatId);
-      
+      messages.success('Chat terminated');
     } catch (e) {
+      if (e instanceof Error && e.message === 'User cancelled') {
+        return; // User cancelled
+      }
       console.error('Error terminating seeker chat:', e);
-      toast.error(e instanceof Error ? e.message : t('common.error_occurred', 'Er is iets misgegaan.'));
+      messages.error(MESSAGE_KEYS.common.error);
     }
   };
 
@@ -554,13 +599,20 @@ export default function MatchReportModal({ report, property, onClose, initialSho
   };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-0 md:p-4"
-      onClick={onClose}
-    >
+    <>
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-0 md:p-4"
+        onClick={onClose}
+      >
       <motion.div 
         initial={{ scale: 0.95, y: 30 }}
         animate={{ scale: 1, y: 0 }}
@@ -1156,5 +1208,6 @@ export default function MatchReportModal({ report, property, onClose, initialSho
         providerLevel={providerProfile?.verificationLevel || 1} 
       />
     </motion.div>
+    </>
   );
 }

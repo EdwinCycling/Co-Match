@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import './i18n';
 import App from './App.tsx';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { MessageProvider } from './services/messageContext';
 import './index.css';
 
 class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
@@ -39,7 +40,9 @@ createRoot(rootElement!).render(
     <ErrorBoundary>
       <Suspense fallback={<div style={{ padding: 20, background: '#f5f5f5', color: '#333' }}>Loading app...</div>}>
         <SettingsProvider>
-          <App />
+          <MessageProvider>
+            <App />
+          </MessageProvider>
         </SettingsProvider>
       </Suspense>
     </ErrorBoundary>

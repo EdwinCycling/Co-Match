@@ -1749,5 +1749,14 @@
   "prop.preference.pref_handyman": "",
   "prop.preference.pref_renovation": "",
   "prop.preference.pref_smoking": "",
-  "prop.preference.preferred_language": ""
+  "prop.preference.preferred_language": "",
+  "common.error_occurred": "Сталася помилка. Будь ласка, спробуйте ще раз.",
+  "common.modal_title": "Повідомлення",
+  "seeker.report_error": "Під час створення звіту сталася помилка.",
+  "prop.editor.alert_short_incomplete": "Ви зможете активувати об'єкт лише після того, як Quick Start буде завершено на 100%.",
+  "prop.editor.alert_title_required": "Будь ласка, введіть назву для об'єкта.",
+  "prop.editor.alert_title_too_short": "Назва об'єкта є обов'язковою (мінімум 2 символи).",
+  "prop.editor.alert_min_stay_required": "Мінімальний термін оренди є обов'язковим для короткострокової суборенди та нагляду за житлом.",
+  "prop.editor.alert_max_stay_required": "Максимальний термін оренди є обов'язковим для короткострокової суборенди та нагляду за житлом.",
+  "prop.editor.auto_paused": "У цього об'єкта немає доступних місяців, тому його автоматично призупинено."
 }

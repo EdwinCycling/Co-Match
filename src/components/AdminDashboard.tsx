@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useSettings } from '../contexts/SettingsContext';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell
@@ -40,6 +40,8 @@ import {
 import { PropertyEditor, Property, PropertyImage } from './ProviderDashboard';
 import { useCurrencyConverter } from '../hooks/useCurrencyConverter';
 import { formatDate as globalFormatDate } from '../lib/formatters';
+import { useMessages } from '../services/messageContext';
+import { MESSAGE_KEYS } from '../constants/messages';
 
 
 const DEFAULT_ROLE_INSTRUCTION = `Jouw Rol:
@@ -181,22 +183,32 @@ const UserDetailModal: React.FC<{
   dateFormat: 'DD/MM/YYYY' | 'MM/DD/YYYY';
 }> = ({ user, isOpen, onClose, onUpdate, dateFormat }) => {
   const { t } = useTranslation();
+  const messages = useMessages();
   const [loading, setLoading] = useState(false);
 
   if (!isOpen || !user) return null;
 
   const handleToggleStatus = async () => {
     const newStatus = !user.isSuspended;
-    const confirmMsg = t('admin.user_details.suspension_warning');
-    if (!window.confirm(confirmMsg)) return;
-
-    setLoading(true);
     try {
+      await messages.confirm({
+        title: t('admin.dashboard.deactivateUserConfirm.title', { defaultValue: 'Change User Status?' }),
+        description: t('admin.user_details.suspension_warning', { 
+          defaultValue: 'Are you sure you want to change this account\'s active status?'
+        }),
+        confirmLabel: t('common.confirm', { defaultValue: 'Confirm' }),
+      });
+      
+      setLoading(true);
       await toggleAdminUserStatus(user.id, newStatus);
-      toast.success(newStatus ? "Account op non-actief gezet" : "Account geactiveerd");
+      messages.success(newStatus ? MESSAGE_KEYS.admin.dashboard.deactivateUserSuccess : MESSAGE_KEYS.admin.dashboard.activateUserSuccess);
       onUpdate();
       onClose();
     } catch (e) {
+      if (e instanceof Error && e.message === 'User cancelled') {
+        return; // User cancelled
+      }
+      messages.error(newStatus ? MESSAGE_KEYS.admin.dashboard.deactivateUserError : MESSAGE_KEYS.admin.dashboard.activateUserError);
       handleFirestoreError(e, OperationType.UPDATE, `users/${user.id}`);
     } finally {
       setLoading(false);

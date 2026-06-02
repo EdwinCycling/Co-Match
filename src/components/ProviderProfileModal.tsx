@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Save, User, Phone, Mail, FileText, Loader2, ShieldCheck, ChevronRight, Camera, Trash2, ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { TrustBadge } from './TrustBadge';
+import ModalPopup from './ModalPopup';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { auth } from '../lib/firebase';
 
@@ -76,6 +77,7 @@ export function ProviderProfileModal({
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [systemDialog, setSystemDialog] = useState<{ title?: string; message: React.ReactNode } | null>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -144,7 +146,10 @@ export function ProviderProfileModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (validateText(formData.description)) {
-      alert(t('chat.error_invalid', 'Bericht bevat geen geldige tekst of verboden tekens.'));
+      setSystemDialog({
+        title: t('common.modal_title', 'Notice'),
+        message: t('provider.profile.invalid_text', 'Your profile text contains invalid text or forbidden characters.'),
+      });
       return;
     }
     setSaving(true);
@@ -154,8 +159,15 @@ export function ProviderProfileModal({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+    <>
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
+      <div 
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
       onClick={onClose}
     >
       <motion.div 
@@ -166,8 +178,8 @@ export function ProviderProfileModal({
       >
         <div className="p-8 border-b border-outline flex justify-between items-center bg-surface-container-lowest">
           <div>
-            <h2 className="text-2xl font-display font-black text-on-background">{t('provider.profile_title', 'Je Profiel')}</h2>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mt-1">{t('provider.profile_subtitle', 'Vul je gegevens in om woningen aan te bieden')}</p>
+            <h2 className="text-2xl font-display font-black text-on-background">{t('provider.profile_title', 'Your profile')}</h2>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mt-1">{t('provider.profile_subtitle', 'Fill in your details to list properties')}</p>
           </div>
           <button onClick={onClose} className="p-3 hover:bg-surface-container rounded-full transition-colors text-on-surface-variant">
             <X size={24} />
@@ -181,13 +193,13 @@ export function ProviderProfileModal({
                <div className="space-y-4 mb-2 p-6 bg-surface-container rounded-3xl border-2 border-outline/10">
                  <div className="flex items-center justify-between">
                     <div>
-                       <h3 className="font-black flex items-center gap-2"><ShieldCheck className="text-primary"/> The Trust Ladder</h3>
-                       <p className="text-sm text-on-surface-variant font-medium mt-1">Vergroot je betrouwbaarheid en krijg meer weergaven.</p>
+                       <h3 className="font-black flex items-center gap-2"><ShieldCheck className="text-primary"/> {t('verification.trust_ladder_title', 'The Trust Ladder')}</h3>
+                       <p className="text-sm text-on-surface-variant font-medium mt-1">{t('verification.trust_ladder_desc', 'Increase your trust level and get more visibility.')}</p>
                     </div>
                     <TrustBadge level={userVerificationLevel || 1} size="md" />
                  </div>
                  <button type="button" onClick={() => { onClose(); onOpenVerification?.(); }} className="w-full py-3 bg-surface text-on-surface rounded-xl border border-outline/20 font-bold flex items-center justify-between px-4 hover:border-primary/50 text-sm">
-                    <span>Verificatie & Status Bekijken</span>
+                    <span>{t('verification.view_status', 'View verification & status')}</span>
                     <ChevronRight size={16} className="text-on-surface-variant" />
                  </button>
                </div>
@@ -218,8 +230,8 @@ export function ProviderProfileModal({
                 )}
               </div>
               <div className="flex-1 text-center sm:text-left">
-                 <h4 className="font-bold text-lg">{t('seeker.photo_title', 'Profielfoto')}</h4>
-                 <p className="text-xs text-on-surface-variant font-medium mt-1">{t('seeker.photo_desc', 'Laat zien wie je bent! Een goede foto schept vertrouwen en resulteert in betere matches.')}</p>
+                 <h4 className="font-bold text-lg">{t('seeker.photo_title', 'Profile photo')}</h4>
+                 <p className="text-xs text-on-surface-variant font-medium mt-1">{t('seeker.photo_desc', 'Show who you are. A good photo builds trust and leads to better matches.')}</p>
               </div>
             </div>
 
@@ -321,5 +333,6 @@ export function ProviderProfileModal({
         </div>
       </motion.div>
     </div>
+    </>
   );
 }

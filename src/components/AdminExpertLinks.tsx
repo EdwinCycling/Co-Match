@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Plus, Edit2, Trash2, Globe, Tag, SortAsc, Eye, X } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { ExpertLink, ExpertHub } from './ExpertHub';
 import { motion, AnimatePresence } from 'motion/react';
 import { TypeAheadSelect } from './TypeAheadSelect';
 import { deleteExpertLink, reorderExpertLinks, saveExpertLink } from '../services/adminWriteService';
+import { useMessages } from '../services/messageContext';
+import { MESSAGE_KEYS } from '../constants/messages';
 
 const CATEGORIES = ['Juristen', 'Verzekeraars', 'Hypotheekadviseurs', 'Notarissen', 'Verhuizers', 'Overige'];
 const COUNTRIES = [
@@ -20,6 +21,7 @@ const COUNTRIES = [
 
 export default function AdminExpertLinks() {
   const { t } = useTranslation();
+  const messages = useMessages();
   const [links, setLinks] = useState<ExpertLink[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -43,7 +45,7 @@ export default function AdminExpertLinks() {
       setLinks(fetchedLinks);
     } catch (err) {
       console.error(err);
-      toast.error('Fout bij ophalen links');
+      messages.error(MESSAGE_KEYS.admin.expertLinks.loadError);
     } finally {
       setLoading(false);
     }
@@ -56,7 +58,7 @@ export default function AdminExpertLinks() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLink?.title || !editingLink?.url || !editingLink?.country || !editingLink?.category) {
-      toast.error('Vul alle verplichte velden in');
+      messages.error(MESSAGE_KEYS.admin.expertLinks.allFieldsRequired);
       return;
     }
 
@@ -72,24 +74,32 @@ export default function AdminExpertLinks() {
         linkType: editingLink.linkType || 'lead',
         isActive: editingLink.isActive !== undefined ? editingLink.isActive : true,
       });
-      toast.success('Link opgeslagen');
+      messages.success(MESSAGE_KEYS.admin.expertLinks.saveSuccess);
       setIsEditModalOpen(false);
       fetchLinks();
     } catch (err) {
       console.error(err);
-      toast.error('Gevalideerde fout bij opslaan');
+      messages.error(MESSAGE_KEYS.admin.expertLinks.saveSuccess);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Weet je zeker dat je deze link wilt verwijderen?')) return;
     try {
+      await messages.confirm({
+        title: t('admin.expertLinks.deleteConfirm.title', { defaultValue: 'Delete Link?' }),
+        description: t(MESSAGE_KEYS.admin.expertLinks.deleteConfirm, { defaultValue: 'Are you sure you want to delete this link?' }),
+        confirmLabel: t('common.delete', { defaultValue: 'Delete' }),
+        isDangerous: true,
+      });
       await deleteExpertLink(id);
-      toast.success('Link verwijderd');
+      messages.success(MESSAGE_KEYS.admin.expertLinks.deleteSuccess);
       fetchLinks();
     } catch (err) {
+      if (err instanceof Error && err.message === 'User cancelled') {
+        return; // User cancelled the confirmation
+      }
       console.error(err);
-      toast.error('Fout bij verwijderen');
+      messages.error(MESSAGE_KEYS.admin.expertLinks.deleteError);
     }
   };
 
@@ -102,7 +112,7 @@ export default function AdminExpertLinks() {
       await reorderExpertLinks(current.id, current.order_index || 0, prev.id, prev.order_index || 0);
       fetchLinks();
     } catch (err) {
-      toast.error('Fout bij sorteren');
+      messages.error(MESSAGE_KEYS.common.error);
     }
   };
 
@@ -115,7 +125,7 @@ export default function AdminExpertLinks() {
       await reorderExpertLinks(current.id, current.order_index || 0, next.id, next.order_index || 0);
       fetchLinks();
     } catch (err) {
-      toast.error('Fout bij sorteren');
+      messages.error(MESSAGE_KEYS.common.error);
     }
   };
 

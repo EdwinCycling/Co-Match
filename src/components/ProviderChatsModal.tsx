@@ -11,7 +11,8 @@ import { getExistingMatch, translateMatchReport } from '../services/matchService
 import ReactMarkdown from 'react-markdown';
 import { MeetingPlaceSuggester } from './MeetingPlaceSuggester';
 import { ExpertHub } from './ExpertHub';
-import { toast } from 'react-hot-toast';
+import ModalPopup from './ModalPopup';
+import toast from 'react-hot-toast';
 import VideoMeetingBanner from './VideoMeetingBanner';
 import { sendChatMessageEmailNotification } from '../services/smartMatchAlertService';
 import { fetchPublicProfileCard } from '../lib/publicProfile';
@@ -23,6 +24,8 @@ import {
   terminateChat,
   toggleLinkedInChatShare,
 } from '../services/chatService';
+import { useMessages } from '../services/messageContext';
+import { MESSAGE_KEYS } from '../constants/messages';
 
 const MatchReportModal = lazy(() => import('./MatchReportModal'));
 
@@ -45,6 +48,7 @@ interface ProviderChatsModalProps {
 
 export default function ProviderChatsModal({ property, onClose }: ProviderChatsModalProps) {
   const { t, i18n } = useTranslation();
+  const messages = useMessages();
   const { dateFormat, timeFormat } = useSettings();
   const currencyConverter = useCurrencyConverter();
   const [chats, setChats] = useState<any[]>([]);
@@ -57,6 +61,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
   const [translateModalInfo, setTranslateModalInfo] = useState<{ existing: any, targetLang: string } | null>(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [showProfile, setShowProfile] = useState<any | null>(null);
+  const [systemDialog, setSystemDialog] = useState<{
+    title?: string;
+    message: React.ReactNode;
+    copyValue?: string;
+    copyLabel?: string;
+    copyButtonText?: string;
+  } | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'last_seeker' | 'waiting_seeker' | 'terminated'>('all');
   const [showExpandedInput, setShowExpandedInput] = useState(false);
@@ -215,12 +226,18 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     
     const textToSend = message.trim();
     if (textToSend.length > 500) {
-      alert("Bericht is te lang (maximaal 500 tekens).");
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_too_long', { max: 500 }),
+      });
       return;
     }
 
     if (selectedChat.messages && selectedChat.messages.length >= 50) {
-      alert("Maximum van 50 berichten bereikt voor deze chatbox.");
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('chat.error_max_messages', 'Maximum van 50 berichten bereikt voor deze chatbox.'),
+      });
       return;
     }
 
@@ -266,16 +283,25 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
 
   const handleBlock = async () => {
     if (!selectedChat) return;
-    const confirmBlock = window.confirm("Weet je zeker dat je deze kandidaat wilt blokkeren voor deze woning? Deze kandidaat verdwijnt dan uit je lijst.");
-    if (!confirmBlock) return;
-
     try {
+      await messages.confirm({
+        title: t('chat.blockUserConfirm.title', { defaultValue: 'Block Candidate?' }),
+        description: t(MESSAGE_KEYS.chat.blockUserConfirm, { 
+          defaultValue: 'Are you sure you want to block this candidate for this property? This candidate will disappear from your list.'
+        }),
+        confirmLabel: t('common.confirm', { defaultValue: 'Confirm' }),
+        isDangerous: true,
+      });
       await blockChat(selectedChat.id);
       // automatically deselect since it will disappear
       setSelectedChat(null);
+      messages.success(MESSAGE_KEYS.chat.blockUserSuccess);
     } catch (e) {
+      if (e instanceof Error && e.message === 'User cancelled') {
+        return; // User cancelled the confirmation
+      }
       console.error(e);
-      alert('Error blocking user');
+      messages.error(MESSAGE_KEYS.chat.blockUserError);
     }
   };
 
@@ -348,11 +374,17 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
            setShowReport(existing.report);
          }
       } else {
-         alert(t("property.no_report", "Geen AI rapport gevonden voor deze match."));
+         setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('property.no_report', 'Geen AI rapport gevonden voor deze match.'),
+      });
       }
     } catch (e) {
       console.error(e);
-      alert(t("property.error_report", "Error loading report."));
+      setSystemDialog({
+        title: t('common.modal_title', 'Melding'),
+        message: t('property.error_report', 'Error loading report.'),
+      });
     }
     setLoadingReport(false);
   };
@@ -393,13 +425,13 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     }
     
     if (!pickedMeetingDate) {
-       toast.error("Kies een geldige datum/tijd.");
+       toast.error(t('chat.invalid_date_time', 'Choose a valid date/time.'));
        return;
     }
     
     let parsedDate = new Date(pickedMeetingDate);
     if (isNaN(parsedDate.getTime())) {
-      toast.error("Kies een geldige datum/tijd.");
+      toast.error(t('chat.invalid_date_time', 'Choose a valid date/time.'));
       return;
     }
     
@@ -443,8 +475,15 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
     });
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
+    <>
+      <ModalPopup
+        isOpen={!!systemDialog}
+        title={systemDialog?.title}
+        message={systemDialog?.message || ''}
+        onClose={() => setSystemDialog(null)}
+      />
+      <motion.div 
+        initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-md flex items-center justify-center p-2 md:p-4"
@@ -1209,25 +1248,21 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   <AlertCircle size={32} />
                 </div>
                 <h3 className="text-xl font-display font-black text-on-surface">
-                  Gesprek stoppen?
+                  {t('chat.terminate.title', 'End conversation?')}
                 </h3>
                 <p className="text-sm text-on-surface-variant font-medium">
-                  Weet je zeker dat je dit gesprek wilt beëindigen? De kandidaat kan dan niet meer reageren en de plek komt weer vrij.
+                  {t('chat.terminate.desc', 'Are you sure you want to end this conversation? The candidate will no longer be able to reply and the spot becomes available again.')}
                 </p>
 
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => setChatToTerminate(null)}
                     className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-surface bg-surface-container hover:bg-surface-container-high transition-all"
-                  >
-                    Annuleren
-                  </button>
+                  >{t('common.cancel', 'Annuleren')}</button>
                   <button
                     onClick={confirmTerminateChat}
                     className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-primary bg-red-600 hover:bg-red-700 transition-all shadow-md"
-                  >
-                    Stoppen
-                  </button>
+                  >{t('chat.terminate.btn', 'End')}</button>
                 </div>
               </div>
             </motion.div>
@@ -1250,7 +1285,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               className="bg-background text-on-background rounded-[2rem] shadow-2xl p-6 lg:p-8 w-full max-w-lg mx-auto border border-outline"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-display font-black text-on-surface">{t('report.translate_title', 'Ontdekte taalafwijking')}</h3>
+                <h3 className="text-2xl font-display font-black text-on-surface">{t('report.translate_title', 'Language difference detected')}</h3>
                 <button
                   onClick={() => setTranslateModalInfo(null)}
                   className="p-2 bg-surface-container rounded-full hover:bg-surface-container-high transition-colors"
@@ -1269,9 +1304,9 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-black uppercase tracking-widest text-on-primary bg-primary hover:bg-primary/95 transition-all shadow-md disabled:opacity-50"
                 >
                   {isTranslating ? (
-                    <span className="flex items-center gap-2"><Sparkles className="animate-spin" size={20}/> {t('report.translating', 'Vertalen...')}</span>
+                    <span className="flex items-center gap-2"><Sparkles className="animate-spin" size={20}/> {t('report.translating', 'Translating...')}</span>
                   ) : (
-                    <span className="flex items-center gap-2"><ArrowUpDown size={20}/> {t('report.translate_btn', 'Vertaal rapport')}</span>
+                    <span className="flex items-center gap-2"><ArrowUpDown size={20}/> {t('report.translate_btn', 'Translate report')}</span>
                   )}
                 </button>
                 <button
@@ -1279,7 +1314,7 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                   disabled={isTranslating}
                   className="w-full py-4 rounded-xl font-black uppercase tracking-widest text-on-surface bg-surface-container hover:bg-surface-container-high transition-all outline outline-1 outline-outline"
                 >
-                  {t('report.show_original_btn', 'Toon Origineel')}
+                  {t('report.show_original_btn', 'Show original')}
                 </button>
               </div>
             </motion.div>
@@ -1302,10 +1337,10 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
               className="bg-background text-on-background rounded-[2rem] shadow-2xl max-w-sm w-full overflow-hidden p-6 border border-outline"
             >
               <h3 className="text-xl font-display font-black text-on-surface mb-4">
-                {t('chat.schedule_meeting', 'Videogesprek inplannen')}
+                {t('chat.schedule_meeting', 'Schedule video call')}
               </h3>
               <p className="text-sm text-on-surface-variant font-medium mb-4">
-                {t('chat.schedule_meeting_desc', 'Kies een datum en tijd voor het videogesprek.')}
+                {t('chat.schedule_meeting_desc', 'Choose a date and time for the video call.')}
               </p>
               
               <input 
@@ -1319,20 +1354,18 @@ export default function ProviderChatsModal({ property, onClose }: ProviderChatsM
                 <button
                   onClick={() => setShowDatePickerForMeeting(false)}
                   className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-surface bg-surface-container hover:bg-surface-container-high transition-all"
-                >
-                  Annuleren
-                </button>
+                >{t('common.cancel', 'Annuleren')}</button>
                 <button
                   onClick={handleProposeMeeting}
                   className="flex-1 px-4 py-3 rounded-xl font-black uppercase tracking-widest text-on-primary bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md"
-                >
-                  Voorstellen
-                </button>
+                >{t('chat.meeting_propose', 'Propose')}</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
+    </>
   );
 }
+

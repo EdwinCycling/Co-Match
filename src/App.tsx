@@ -91,6 +91,8 @@ import { LanguageSwitcher } from './components/LanguageSwitcher';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { syncUserProfile, updateUserRole } from './services/userService';
 import { ServerFunctionError } from './lib/serverApi';
+import ConfirmationModal from './components/ConfirmationModal';
+import { MessageProvider, useMessageService } from './services/messageContext';
 
 
 const APP_STOP_CACHE_KEY = 'co_match_guest_app_stop_v1';
@@ -194,6 +196,7 @@ function ScreenLoader({ message }: { message: string }) {
 
 export default function App() {
   const { t, i18n } = useTranslation();
+  const { confirmModal } = useMessageService();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoginBusy, setIsLoginBusy] = useState(false);
@@ -829,6 +832,16 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Toaster position="bottom-right" toastOptions={{ duration: 3000, style: { background: '#3c372b', color: '#fff', fontSize: '12px', fontWeight: 'bold', borderRadius: '1rem' } }} containerStyle={{ zIndex: 9999999 }} />
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.options?.title || ''}
+        description={confirmModal.options?.description || ''}
+        confirmLabel={confirmModal.options?.confirmLabel}
+        cancelLabel={confirmModal.options?.cancelLabel}
+        isDangerous={confirmModal.options?.isDangerous}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={confirmModal.onCancel}
+      />
       <CookieBanner />
       <PWAInstallPrompt 
         user={user} 
